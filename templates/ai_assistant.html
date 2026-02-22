@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}DevForge — AI Assistant{% endblock %}
+{% from "sidebar.html" import render_sidebar %}
+{% block extra_css %}
+<style>
+body{display:flex;}
+.ai-layout{display:flex;flex:1;height:100vh;overflow:hidden;}
+.ai-tools-panel{width:240px;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 10px;gap:4px;background:var(--surface);flex-shrink:0;overflow-y:auto;}
+.tool-section-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 8px 4px;}
+.tool-btn-side{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;transition:.15s;border:1px solid transparent;background:transparent;width:100%;text-align:left;}
+.tool-btn-side:hover{background:var(--card);color:var(--text);border-color:var(--border);}
+.tool-btn-side.active{background:rgba(110,231,183,0.08);color:var(--accent);border-color:rgba(110,231,183,0.2);}
+.tool-icon{font-size:16px;width:20px;text-align:center;}
+.ai-main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.ai-topbar{height:60px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--surface);flex-shrink:0;}
+.ai-main-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:10px;}
+.ai-badge{font-size:10px;background:rgba(110,231,183,0.12);color:var(--accent);border:1px solid rgba(110,231,183,0.25);padding:2px 9px;border-radius:100px;}
+.messages{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:14px;}
+.msg{display:flex;gap:12px;animation:msgIn .3s ease;}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{flex-direction:row-reverse;}
+.msg-avatar{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+.msg-avatar.ai-av{background:linear-gradient(135deg,var(--accent),var(--accent3));color:var(--bg);}
+.msg-avatar.user-av{background:linear-gradient(135deg,var(--accent3),var(--accent2));color:white;}
+.msg-body{max-width:75%;}
+.msg-bubble{padding:12px 16px;border-radius:14px;font-size:13px;line-height:1.8;}
+.msg.ai .msg-bubble{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px 14px 14px 14px;}
+.msg.user .msg-bubble{background:linear-gradient(135deg,var(--accent-d),var(--accent));color:var(--bg);font-weight:500;border-radius:14px 4px 14px 14px;}
+.msg-meta{font-size:10px;color:var(--muted);margin-top:4px;}
+.msg.user .msg-meta{text-align:right;}
+.msg-bubble.typing{display:flex;gap:4px;align-items:center;padding:14px 16px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite;}
+.dot:nth-child(2){animation-delay:.2s;}.dot:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+.chat-input-area{border-top:1px solid var(--border);padding:16px 22px;background:var(--surface);flex-shrink:0;}
+.chat-row{display:flex;gap:10px;align-items:flex-end;}
+.chat-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:12px;padding:11px 16px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;outline:none;resize:none;transition:.2s;line-height:1.5;max-height:120px;overflow-y:auto;}
+.chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(110,231,183,0.08);}
+.send-btn{width:42px;height:42px;border-radius:10px;background:var(--accent);color:var(--bg);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;}
+.send-btn:hover{filter:brightness(1.1);}
+.send-btn:disabled{opacity:.5;cursor:not-allowed;}
+/* Tool views */
+.tool-view{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.tool-view.active{display:flex;}
+.tv-header{padding:20px 22px;border-bottom:1px solid var(--border);}
+.tv-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+.tv-sub{font-size:13px;color:var(--muted);}
+.tv-body{flex:1;padding:22px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.tv-result{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;font-size:13px;line-height:1.8;color:var(--text2);white-space:pre-wrap;flex:1;min-height:200px;font-family:'JetBrains Mono',monospace;}
+.copy-btn{font-size:11px;padding:6px 12px;border:1px solid var(--border);border-radius:7px;background:transparent;cursor:pointer;color:var(--muted);transition:.2s;}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.ai-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+.ai-stat-val{font-size:26px;font-weight:800;color:var(--accent);}
+.ai-stat-lab{font-size:10px;color:var(--muted);margin-top:4px;}
+@media(max-width:900px){.ai-tools-panel{display:none;}}
+</style>
+{% endblock %}
+
+{% block content %}
+{{ render_sidebar(user, 'ai') }}
+<div class="ai-layout">
+  <!-- Tool sidebar -->
+  <div class="ai-tools-panel">
+    <div class="tool-section-label">Tools</div>
+    <button class="tool-btn-side active" onclick="showTool('chat',this)"><span class="tool-icon">💬</span>AI Chat</button>
+    <button class="tool-btn-side" onclick="showTool('summary',this)"><span class="tool-icon">📊</span>Daily Summary</button>
+    <button class="tool-btn-side" onclick="showTool('tasks',this)"><span class="tool-icon">🔍</span>Task Analysis</button>
+    <div class="tool-section-label">Content</div>
+    <button class="tool-btn-side" onclick="showTool('readme',this)"><span class="tool-icon">📄</span>README Gen</button>
+    <button class="tool-btn-side" onclick="showTool('improve',this)"><span class="tool-icon">✦</span>Improve Text</button>
+    <button class="tool-btn-side" onclick="showTool('grammar',this)"><span class="tool-icon">✓</span>Fix Grammar</button>
+    <button class="tool-btn-side" onclick="showTool('codereview',this)"><span class="tool-icon">🔍</span>Code Review</button>
+    <div class="tool-section-label">Stats</div>
+    <div style="padding:8px 10px;">
+      <div class="ai-stat" style="margin-bottom:8px;"><div class="ai-stat-val">{{ stats.active_projects }}</div><div class="ai-stat-lab">Active Projects</div></div>
+      <div class="ai-stat" style="margin-bottom:8px;"><div class="ai-stat-val" style="color:var(--accent2);">{{ stats.pending_tasks }}</div><div class="ai-stat-lab">Pending Tasks</div></div>
+      <div class="ai-stat"><div class="ai-stat-val" style="color:var(--accent3);">{{ stats.completion_rate }}%</div><div class="ai-stat-lab">Completion</div></div>
+    </div>
+  </div>
+
+  <!-- Main panel -->
+  <div class="ai-main">
+    <div class="ai-topbar">
+      <div class="ai-main-title">
+        <span id="aiTitle">✦ AI Chat</span>
+        <span class="ai-badge">Live</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="clock-display" id="clockDisplay">—</div>
+        <div class="topbar-btn" id="notifBtn">🔔<span class="badge">0</span></div>
+      </div>
+    </div>
+
+    <!-- Chat view -->
+    <div class="tool-view active" id="view-chat" style="flex-direction:column;">
+      <div class="messages" id="messages">
+        <div class="msg ai">
+          <div class="msg-avatar ai-av">✦</div>
+          <div class="msg-body">
+            <div class="msg-bubble">Hi {{ user.username }}! I'm your DevForge AI assistant. I know you have <strong>{{ stats.active_projects }}</strong> active project(s) and <strong>{{ stats.pending_tasks }}</strong> pending task(s). How can I help you today?</div>
+            <div class="msg-meta">Just now</div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-row">
+          <textarea class="chat-input" id="chatInput" placeholder="Ask me anything about your projects, tasks, or get writing help…" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}" oninput="autoResize(this)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendChat()">→</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary view -->
+    <div class="tool-view" id="view-summary">
+      <div class="tv-header"><div class="tv-title">📊 Daily Summary</div><div class="tv-sub">AI-generated overview of your productivity</div></div>
+      <div class="tv-body">
+        <div class="stat-row">
+          <div class="ai-stat"><div class="ai-stat-val">{{ stats.tasks_done_today }}</div><div class="ai-stat-lab">Done Today</div></div>
+          <div class="ai-stat"><div class="ai-stat-val" style="color:var(--accent2);">{{ stats.missed_tasks }}</div><div class="ai-stat-lab">Missed</div></div>
+          <div class="ai-stat"><div class="ai-stat-val" style="color:var(--accent3);">{{ stats.finished_projects }}</div><div class="ai-stat-lab">Finished Projects</div></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="loadSummary()">✦ Generate Summary</button>
+        <div class="tv-result" id="summaryResult" style="min-height:150px;">Click "Generate Summary" to get your AI overview.</div>
+      </div>
+    </div>
+
+    <!-- Task analysis view -->
+    <div class="tool-view" id="view-tasks">
+      <div class="tv-header"><div class="tv-title">🔍 Task Analysis</div><div class="tv-sub">AI-powered insights on your task patterns</div></div>
+      <div class="tv-body">
+        <button class="btn btn-primary btn-sm" onclick="loadTaskAnalysis()">✦ Analyse My Tasks</button>
+        <div class="tv-result" id="taskResult">Click to analyse your task patterns and get actionable suggestions.</div>
+      </div>
+    </div>
+
+    <!-- README view -->
+    <div class="tool-view" id="view-readme">
+      <div class="tv-header"><div class="tv-title">📄 README Generator</div><div class="tv-sub">Generate a professional README for your project</div></div>
+      <div class="tv-body">
+        <div class="form-group"><label class="form-label">Project Name</label><input type="text" class="form-input" id="readmeName" placeholder="My Project"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="readmeDesc" placeholder="What does it do?"></textarea></div>
+        <div class="form-group"><label class="form-label">Tech Stack</label><input type="text" class="form-input" id="readmeTech" placeholder="Python, React, PostgreSQL..."></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm" onclick="genReadme()">✦ Generate README</button>
+          <button class="copy-btn" onclick="copyResult('readmeResult')">📋 Copy</button>
+        </div>
+        <div class="tv-result" id="readmeResult">Fill in the details and click Generate.</div>
+      </div>
+    </div>
+
+    <!-- Improve view -->
+    <div class="tool-view" id="view-improve">
+      <div class="tv-header"><div class="tv-title">✦ Improve Text</div><div class="tv-sub">Make your descriptions more professional</div></div>
+      <div class="tv-body">
+        <div class="form-group"><label class="form-label">Your Text</label><textarea class="form-textarea" id="improveInput" style="min-height:120px;" placeholder="Paste text to improve…"></textarea></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm" onclick="improveText()">✦ Improve</button>
+          <button class="copy-btn" onclick="copyResult('improveResult')">📋 Copy</button>
+        </div>
+        <div class="tv-result" id="improveResult">Improved text will appear here.</div>
+      </div>
+    </div>
+
+    <!-- Grammar view -->
+    <div class="tool-view" id="view-grammar">
+      <div class="tv-header"><div class="tv-title">✓ Fix Grammar</div><div class="tv-sub">Correct grammar and spelling errors</div></div>
+      <div class="tv-body">
+        <div class="form-group"><label class="form-label">Text to Fix</label><textarea class="form-textarea" id="grammarInput" style="min-height:120px;" placeholder="Paste text to fix…"></textarea></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm" onclick="fixGrammar()">✓ Fix Grammar</button>
+          <button class="copy-btn" onclick="copyResult('grammarResult')">📋 Copy</button>
+        </div>
+        <div class="tv-result" id="grammarResult">Fixed text will appear here.</div>
+      </div>
+    </div>
+
+    <div class="tool-view" id="view-codereview" style="display:none;">
+      <div class="tv-header"><div class="tv-title">🔍 AI Code Review</div><div class="tv-sub">Get feedback on bugs, security, and best practices</div></div>
+      <div class="tv-body">
+        <div class="form-group">
+          <label class="form-label">Language (optional)</label>
+          <input class="form-input" id="codeReviewLang" placeholder="e.g. Python, JavaScript, SQL…" style="margin-bottom:10px;">
+        </div>
+        <div class="form-group"><label class="form-label">Paste Your Code</label><textarea class="form-textarea" id="codeReviewInput" style="min-height:180px;font-family:'JetBrains Mono',monospace;font-size:12px;" placeholder="Paste your code here…"></textarea></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <button class="btn btn-primary btn-sm" onclick="runCodeReview()">🔍 Review Code</button>
+          <button class="copy-btn" onclick="copyResult('codeReviewResult')">📋 Copy</button>
+        </div>
+        <div class="tv-result" id="codeReviewResult" style="white-space:pre-wrap;">Review results will appear here.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__events={{ (events|tojson) if events is defined else '[]' }};
+window.__tasks={{ (tasks|tojson) if tasks is defined else '[]' }};
+let chatHistory=[];
+const userInitials='{{ user.username[:2].upper() }}';
+function showTool(name,btn){
+  document.querySelectorAll('.tool-view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tool-btn-side').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  btn.classList.add('active');
+  const titles={chat:'✦ AI Chat',summary:'📊 Daily Summary',tasks:'🔍 Task Analysis',readme:'📄 README Generator',improve:'✦ Improve Text',grammar:'✓ Fix Grammar',codereview:'🔍 Code Review'};
+  document.getElementById('aiTitle').textContent=titles[name]||'AI Tool';
+}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function addMsg(role,text,time){
+  const msgs=document.getElementById('messages');
+  const t=time||new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const div=document.createElement('div');div.className=`msg ${role}`;
+  div.innerHTML=`<div class="msg-avatar ${role==='ai'?'ai-av':'user-av'}">${role==='ai'?'✦':userInitials}</div>
+    <div class="msg-body"><div class="msg-bubble">${role==='ai'?text.replace(/\n/g,'<br>'):esc(text)}</div><div class="msg-meta">${t}</div></div>`;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;return div;
+}
+function addTyping(){
+  const msgs=document.getElementById('messages');
+  const div=document.createElement('div');div.className='msg ai';div.id='typing';
+  div.innerHTML=`<div class="msg-avatar ai-av">✦</div><div class="msg-body"><div class="msg-bubble typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+}
+function removeTyping(){const t=document.getElementById('typing');if(t)t.remove();}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+async function sendChat(){
+  const inp=document.getElementById('chatInput');const msg=inp.value.trim();if(!msg)return;
+  const btn=document.getElementById('sendBtn');btn.disabled=true;inp.value='';inp.style.height='auto';
+  chatHistory.push({role:'user',content:msg});
+  addMsg('user',msg);addTyping();
+  try{
+    const res=await fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const r=await res.json();removeTyping();
+    if(r.result){chatHistory.push({role:'assistant',content:r.result});addMsg('ai',r.result);}
+    else{addMsg('ai','Sorry, I couldn\'t process that. Please try again.');}
+  }catch{removeTyping();addMsg('ai','Network error. Please check your connection.');}
+  btn.disabled=false;inp.focus();
+}
+async function loadSummary(){
+  document.getElementById('summaryResult').textContent='Generating…';
+  try{const res=await fetch('/api/ai/summary');const r=await res.json();document.getElementById('summaryResult').textContent=r.result||'No summary available.';}
+  catch{document.getElementById('summaryResult').textContent='Failed to load summary.';}
+}
+async function loadTaskAnalysis(){
+  document.getElementById('taskResult').textContent='Analysing…';
+  try{const res=await fetch('/api/ai/analyze-tasks');const r=await res.json();document.getElementById('taskResult').textContent=r.result||'No analysis available.';}
+  catch{document.getElementById('taskResult').textContent='Failed to analyse tasks.';}
+}
+async function genReadme(){
+  const name=document.getElementById('readmeName').value;const desc=document.getElementById('readmeDesc').value;const tech=document.getElementById('readmeTech').value;
+  if(!name){showToast('Enter a project name',true);return;}
+  document.getElementById('readmeResult').textContent='Generating README…';
+  try{const res=await fetch('/api/ai/readme',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description:desc,tech})});const r=await res.json();document.getElementById('readmeResult').textContent=r.result||'Failed.';}
+  catch{document.getElementById('readmeResult').textContent='Failed.';}
+}
+async function improveText(){
+  const text=document.getElementById('improveInput').value.trim();if(!text){showToast('Enter some text',true);return;}
+  document.getElementById('improveResult').textContent='Improving…';
+  try{const res=await fetch('/api/ai/improve-description',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});const r=await res.json();document.getElementById('improveResult').textContent=r.result||'Failed.';}
+  catch{document.getElementById('improveResult').textContent='Failed.';}
+}
+async function fixGrammar(){
+  const text=document.getElementById('grammarInput').value.trim();if(!text){showToast('Enter some text',true);return;}
+  document.getElementById('grammarResult').textContent='Fixing…';
+  try{const res=await fetch('/api/ai/fix-grammar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});const r=await res.json();document.getElementById('grammarResult').textContent=r.result||'Failed.';}
+  catch{document.getElementById('grammarResult').textContent='Failed.';}
+}
+function copyResult(id){const t=document.getElementById(id).textContent;navigator.clipboard.writeText(t).then(()=>showToast('Copied! ✓'));}
+function showToast(msg,isErr){const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;t.className='toast'+(isErr?' toast-error':'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+async function runCodeReview(){
+  const code=document.getElementById('codeReviewInput').value.trim();
+  if(!code){showToast('Paste some code first',true);return;}
+  const lang=document.getElementById('codeReviewLang').value.trim();
+  const resEl=document.getElementById('codeReviewResult');
+  resEl.textContent='Reviewing your code…';
+  try{const res=await fetch('/api/ai/code-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,language:lang})});const r=await res.json();resEl.textContent=r.result||'Failed.';}
+  catch{resEl.textContent='Review failed. Please try again.';}
+}
+</script>
+{% endblock %}

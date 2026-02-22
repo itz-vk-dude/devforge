@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Dashboard{% endblock %}
+{% from "sidebar.html" import render_sidebar %}
+
+{% block extra_css %}
+<style>
+body { display:flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ render_sidebar(user, 'dashboard') }}
+
+<div class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-btn mobile-menu-btn" id="mobileMenuBtn">☰</button>
+      <div class="page-title">Dashboard</div>
+    </div>
+    <div class="topbar-right">
+      <div class="clock-display" id="clockDisplay">—</div>
+      <div class="topbar-btn" id="notifBtn" title="Notifications">
+        🔔<span class="badge" id="notifBadge">0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content" style="overflow-y:auto;height:calc(100vh - 60px);">
+    <!-- Greeting -->
+    <div style="margin-bottom:24px;">
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">
+        Good <span id="timeOfDay">morning</span>, {{ user.username }} 👋
+      </div>
+      <div style="font-size:13px;color:var(--muted);" id="dateDisplay">Loading...</div>
+    </div>
+
+    <!-- Real Clock Widget -->
+    <div class="clock-widget" style="margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+      <div>
+        <div class="clock-time clock-time-full" id="clockFull">00:00:00</div>
+        <div class="clock-date clock-date-full" id="clockDateFull"></div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Productivity Score</div>
+        <div style="font-size:28px;font-weight:800;color:var(--accent3);">{{ stats.completion_rate }}<span style="font-size:14px;opacity:.7">%</span></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Active Projects</div>
+        <div class="stat-val">{{ stats.active_projects }}</div>
+        <div class="stat-sub">{{ stats.total_projects }} total</div>
+      </div>
+      <div class="stat-card c2">
+        <div class="stat-label">Done Today</div>
+        <div class="stat-val">{{ stats.tasks_done_today }}</div>
+        <div class="stat-sub">{{ stats.pending_tasks }} pending</div>
+      </div>
+      <div class="stat-card c3">
+        <div class="stat-label">Completion Rate</div>
+        <div class="stat-val">{{ stats.completion_rate }}<span style="font-size:16px">%</span></div>
+        <div class="stat-sub">{{ stats.done_tasks }}/{{ stats.total_tasks }} tasks</div>
+      </div>
+      <div class="stat-card c4">
+        <div class="stat-label">🔥 Daily Streak</div>
+        <div class="stat-val">{{ streak }}</div>
+        <div class="stat-sub">day{{ 's' if streak != 1 else '' }} in a row</div>
+      </div>
+    </div>
+
+    <!-- AI Summary -->
+    <div class="ai-banner">
+      <div class="ai-banner-header">
+        <div class="ai-banner-icon">✦</div>
+        <div class="ai-banner-title">AI Daily Summary</div>
+        <span class="badge badge-green" style="margin-left:auto;font-size:10px;">Live</span>
+      </div>
+      <div class="ai-banner-text" id="aiSummary">Generating your personalized summary...</div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <a href="{{ url_for('projects') }}" class="qa">◫ New Project</a>
+      <a href="{{ url_for('schedule') }}" class="qa">✅ Add Task</a>
+      <a href="{{ url_for('notepad') }}" class="qa">✎ New Note</a>
+      <a href="{{ url_for('schedule') }}" class="qa">📅 Add Event</a>
+      <button class="qa" onclick="openPomodoro()" style="cursor:pointer;border:none;background:inherit;">🍅 Pomodoro</button>
+    </div>
+
+    <!-- Pomodoro Timer Widget -->
+    <div id="pomodoroWidget" style="display:none;margin-bottom:20px;" class="card">
+      <div class="card-header">
+        <div class="card-title">🍅 Pomodoro Focus Timer</div>
+        <button onclick="closePomodoro()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
+      </div>
+      <div class="card-body" style="display:flex;flex-wrap:wrap;gap:20px;align-items:center;">
+        <div style="text-align:center;">
+          <div id="pomTimer" style="font-size:48px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);">25:00</div>
+          <div id="pomLabel" style="font-size:12px;color:var(--muted);margin-top:4px;">FOCUS SESSION</div>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;">
+            <button onclick="startPomodoro()" id="pomStart" class="btn btn-sm">▶ Start</button>
+            <button onclick="pausePomodoro()" id="pomPause" class="btn btn-sm" style="display:none;">⏸ Pause</button>
+            <button onclick="resetPomodoro()" class="btn btn-sm" style="background:var(--card2);">↺ Reset</button>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="setPomMode(25,'FOCUS SESSION')" class="badge badge-green" style="cursor:pointer;border:none;">25 min</button>
+            <button onclick="setPomMode(5,'SHORT BREAK')" class="badge" style="cursor:pointer;border:none;background:var(--card2);">5 min</button>
+            <button onclick="setPomMode(15,'LONG BREAK')" class="badge" style="cursor:pointer;border:none;background:var(--card2);">15 min</button>
+          </div>
+        </div>
+        <div style="flex:1;min-width:180px;">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">✦ AI Focus Suggestion</div>
+          <div id="pomAiTip" style="font-size:13px;color:var(--fg);line-height:1.5;">Click "Get Tip" to get an AI-powered focus recommendation.</div>
+          <button onclick="getPomodoroTip()" class="btn btn-sm" style="margin-top:10px;font-size:11px;">✦ Get AI Tip</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="dash-grid three">
+      <!-- Due Tasks -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚠️ Due & Overdue Tasks</div>
+          <a href="{{ url_for('schedule') }}" class="card-link">View all →</a>
+        </div>
+        <div class="card-body">
+          {% if stats.due_tasks %}
+            {% for t in stats.due_tasks %}
+            <div class="mini-task" data-tid="{{ t.id }}">
+              <div class="mini-check" id="mc-{{ t.id }}" onclick="toggleTask({{ t.id }}, this)">✓</div>
+              <span class="priority-dot dot-{{ t.priority or 'medium' }}"></span>
+              <span class="mini-task-text" id="mt-{{ t.id }}">{{ t.title }}</span>
+              <span style="font-size:10px;color:var(--danger);">{{ t.due_date }}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state" style="padding:24px;">
+              <span class="empty-icon" style="font-size:32px;">🎉</span>
+              <div class="empty-sub">No overdue tasks!</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Upcoming Events -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📅 Upcoming</div>
+          <a href="{{ url_for('schedule') }}" class="card-link">View all →</a>
+        </div>
+        <div class="card-body">
+          {% if stats.upcoming_events %}
+            {% for e in stats.upcoming_events %}
+            <div class="event-mini">
+              <div class="event-date-badge">{{ e.event_date[5:] }}</div>
+              <div class="event-info-mini">
+                <div class="event-title-mini">{{ e.title }}</div>
+                <div class="event-type-mini">{{ e.type }}{% if e.event_time %} · <span id="et-{{ e.id }}">{{ e.event_time }}</span>{% endif %}</div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state" style="padding:24px;"><div class="empty-sub">No upcoming events</div></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Projects + Chart -->
+    <div class="dash-grid" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◫ Recent Projects</div>
+          <a href="{{ url_for('projects') }}" class="card-link">View all →</a>
+        </div>
+        <div class="card-body">
+          {% if projects %}
+            {% for p in projects %}
+            <div class="proj-mini">
+              <span class="proj-mini-name">{{ p.name }}</span>
+              <div class="proj-mini-bar"><div class="proj-mini-fill" style="width:{{ p.progress or 0 }}%"></div></div>
+              <span class="proj-mini-pct">{{ p.progress or 0 }}%</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state" style="padding:20px;"><div class="empty-sub">No projects. <a href="{{ url_for('projects') }}">Create one →</a></div></div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📊 Weekly Productivity</div></div>
+        <div class="card-body">
+          <div class="bar-chart" id="prodChart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__events = {{ events | tojson }};
+window.__tasks = {{ tasks | tojson }};
+
+const prodByDay = {{ stats.prod_by_day | tojson }};
+const totalTasks = {{ stats.total_tasks }};
+const doneTasks = {{ stats.done_tasks }};
+const missedTasks = {{ stats.missed_tasks }};
+const pendingTasks = {{ stats.pending_tasks }};
+const tasksDoneToday = {{ stats.tasks_done_today }};
+const activeProjects = {{ stats.active_projects }};
+const finishedProjects = {{ stats.finished_projects }};
+const completionRate = {{ stats.completion_rate }};
+
+// Date display
+document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+// Convert event times to 12h
+document.querySelectorAll('[id^="et-"]').forEach(el => {
+  const t = el.textContent.trim();
+  if (t && t.includes(':')) {
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    el.textContent = `${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;
+  }
+});
+
+// AI Summary
+function generateSummary() {
+  const lines = [];
+  if (tasksDoneToday > 0) lines.push(`✅ <strong>${tasksDoneToday} task${tasksDoneToday>1?'s':''} completed today</strong> — great momentum!`);
+  else lines.push(`No tasks completed yet today — time to get started!`);
+  if (pendingTasks > 0) lines.push(`You have <strong>${pendingTasks} pending task${pendingTasks>1?'s':''}</strong> awaiting attention.`);
+  if (missedTasks > 0) lines.push(`⚠️ <strong style="color:var(--danger)">${missedTasks} missed deadline${missedTasks>1?'s':''}</strong> — consider rescheduling.`);
+  if (activeProjects > 0) lines.push(`<strong>${activeProjects} project${activeProjects>1?'s are':' is'} in progress.</strong>`);
+  if (completionRate >= 80) lines.push(`🔥 Completion rate: <strong>${completionRate}%</strong> — excellent!`);
+  else if (totalTasks > 0) lines.push(`📈 Completion rate: <strong>${completionRate}%</strong> — keep pushing.`);
+  document.getElementById('aiSummary').innerHTML = lines.join(' ');
+}
+fetch('/api/ai/summary').then(r=>r.json()).then(d=>{ if(d.result) document.getElementById('aiSummary').textContent=d.result; else generateSummary(); }).catch(generateSummary);
+
+// Bar chart
+const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const chart = document.getElementById('prodChart');
+const maxVal = Math.max(...Object.values(prodByDay).map(Number), 1);
+chart.innerHTML = '';
+for (let i = 0; i < 7; i++) {
+  const cnt = prodByDay[String(i)] || 0;
+  const pct = Math.max((cnt / maxVal) * 100, 4);
+  chart.innerHTML += `<div class="bar-wrap">
+    <div class="bar" style="height:${pct}%;background:${cnt>0?'linear-gradient(180deg,var(--accent),var(--accent-d))':'var(--border2)'};" title="${cnt} tasks completed"></div>
+    <span class="bar-label">${days[i]}</span>
+  </div>`;
+}
+
+// Toggle task
+async function toggleTask(tid, el) {
+  const done = !el.classList.contains('done');
+  el.classList.toggle('done', done);
+  const textEl = document.getElementById('mt-' + tid);
+  if (textEl) textEl.classList.toggle('done', done);
+  await fetch(`/api/tasks/${tid}`, {method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({done: done ? 1 : 0, title: textEl?.textContent || '', priority:'medium'})});
+}
+
+// ── Pomodoro Timer ─────────────────────────────────────────
+let pomInterval = null;
+let pomSeconds = 25 * 60;
+let pomRunning = false;
+
+function openPomodoro() {
+  document.getElementById('pomodoroWidget').style.display = '';
+  document.getElementById('pomodoroWidget').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function closePomodoro() {
+  resetPomodoro();
+  document.getElementById('pomodoroWidget').style.display = 'none';
+}
+function setPomMode(mins, label) {
+  resetPomodoro();
+  pomSeconds = mins * 60;
+  document.getElementById('pomLabel').textContent = label;
+  renderPomTimer();
+}
+function renderPomTimer() {
+  const m = Math.floor(pomSeconds / 60);
+  const s = pomSeconds % 60;
+  document.getElementById('pomTimer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function startPomodoro() {
+  if (pomRunning) return;
+  pomRunning = true;
+  document.getElementById('pomStart').style.display = 'none';
+  document.getElementById('pomPause').style.display = '';
+  pomInterval = setInterval(() => {
+    if (pomSeconds <= 0) {
+      clearInterval(pomInterval);
+      pomRunning = false;
+      document.getElementById('pomStart').style.display = '';
+      document.getElementById('pomPause').style.display = 'none';
+      document.getElementById('pomTimer').textContent = '00:00';
+      if (Notification.permission === 'granted') new Notification('🍅 DevForge', {body:'Pomodoro complete! Time for a break.'});
+      return;
+    }
+    pomSeconds--;
+    renderPomTimer();
+  }, 1000);
+}
+function pausePomodoro() {
+  clearInterval(pomInterval);
+  pomRunning = false;
+  document.getElementById('pomStart').style.display = '';
+  document.getElementById('pomPause').style.display = 'none';
+}
+function resetPomodoro() {
+  clearInterval(pomInterval);
+  pomRunning = false;
+  const label = document.getElementById('pomLabel').textContent;
+  const mins = label === 'SHORT BREAK' ? 5 : label === 'LONG BREAK' ? 15 : 25;
+  pomSeconds = mins * 60;
+  renderPomTimer();
+  document.getElementById('pomStart').style.display = '';
+  document.getElementById('pomPause').style.display = 'none';
+}
+function getPomodoroTip() {
+  const tipEl = document.getElementById('pomAiTip');
+  tipEl.textContent = 'Thinking...';
+  fetch('/api/ai/pomodoro-tip').then(r=>r.json()).then(d=>{
+    tipEl.textContent = d.result || 'Focus on your highest-priority task.';
+  }).catch(()=>{ tipEl.textContent = 'Focus on your highest-priority task!'; });
+}
+</script>
+{% endblock %}

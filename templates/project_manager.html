@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Projects{% endblock %}
+{% from "sidebar.html" import render_sidebar %}
+
+{% block extra_css %}
+<style>
+body { display:flex; }
+.github-link { display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg);border:1px solid var(--border2);border-radius:9px;font-size:12px;color:var(--text2);text-decoration:none;transition:.2s;word-break:break-all; }
+.github-link:hover { border-color:var(--accent);color:var(--accent); }
+.upload-area { border:2px dashed var(--border2);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:.2s;font-size:13px;color:var(--muted); }
+.upload-area:hover { border-color:var(--accent);color:var(--accent);background:rgba(110,231,183,0.03); }
+.readme-box { background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;color:var(--text2);white-space:pre-wrap;max-height:220px;overflow-y:auto; }
+.dp-tab-bar { display:flex;border-bottom:1px solid var(--border);margin-bottom:16px; }
+.dp-tab { padding:10px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:.2s; }
+.dp-tab.active { border-bottom-color:var(--accent);color:var(--accent); }
+.dp-tab-content { display:none; }
+.dp-tab-content.active { display:block; }
+.checklist-item { display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;margin-bottom:5px;border:1px solid var(--border);transition:.2s;cursor:pointer; }
+.checklist-item:hover { border-color:var(--border2);background:rgba(255,255,255,.02); }
+.checklist-item.done-item .ci-text { text-decoration:line-through;color:var(--muted); }
+.ci-box { width:16px;height:16px;border-radius:5px;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;font-size:10px;color:transparent; }
+.checklist-item.done-item .ci-box { background:var(--accent);border-color:var(--accent);color:var(--bg); }
+.ci-text { flex:1;font-size:13px; }
+.status-planning { background:rgba(129,140,248,.1);color:#818cf8; }
+.status-in_progress { background:rgba(251,191,36,.1);color:#fbbf24; }
+.status-finished { background:rgba(110,231,183,.1);color:#6ee7b7; }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ render_sidebar(user, 'projects') }}
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-btn mobile-menu-btn" id="mobileMenuBtn">☰</button>
+      <div class="page-title">Projects</div>
+      <span class="badge badge-muted" id="projectCount">0 projects</span>
+    </div>
+    <div class="topbar-right">
+      <div class="clock-display" id="clockDisplay">—</div>
+      <div class="topbar-btn" id="notifBtn" title="Notifications">🔔<span class="badge">0</span></div>
+      <button class="btn btn-primary btn-sm" onclick="openModal()">+ New Project</button>
+    </div>
+  </div>
+
+  <div class="content" style="overflow-y:auto;height:calc(100vh - 60px);">
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="filter-tabs">
+        <button class="tab active" onclick="filterByStatus('all',this)">All</button>
+        <button class="tab" onclick="filterByStatus('planning',this)">Planning</button>
+        <button class="tab" onclick="filterByStatus('in_progress',this)">In Progress</button>
+        <button class="tab" onclick="filterByStatus('finished',this)">Finished</button>
+      </div>
+      <div class="filter-spacer"></div>
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="form-input" id="searchInput" placeholder="Search projects..." oninput="filterProjects()" style="padding-left:34px;width:200px;">
+      </div>
+      <select class="form-select" id="sortSelect" onchange="sortProjects(this.value)" style="width:auto;">
+        <option value="newest">Newest</option>
+        <option value="progress">By Progress</option>
+        <option value="name">By Name</option>
+        <option value="status">By Status</option>
+      </select>
+    </div>
+
+    <!-- Projects Grid -->
+    <div class="projects-grid" id="projectsGrid"></div>
+  </div>
+</div>
+
+<!-- Project Modal -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">New Project</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Project Name *</label>
+        <input type="text" class="form-input" id="projName" placeholder="My Awesome Project">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="projStatus">
+            <option value="planning">📋 Planning</option>
+            <option value="in_progress">⚡ In Progress</option>
+            <option value="finished">✅ Finished</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Progress %</label>
+          <input type="number" class="form-input" id="projProgress" min="0" max="100" value="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="projDesc" placeholder="What is this project about?"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tech / Language</label>
+          <select class="form-select" id="projLang">
+            <option>Python</option><option>JavaScript</option><option>TypeScript</option>
+            <option>React</option><option>FastAPI</option><option>Node.js</option>
+            <option>Java</option><option>Go</option><option>Rust</option><option>C++</option>
+            <option>Flutter</option><option>Swift</option><option>Kotlin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GitHub URL</label>
+          <input type="text" class="form-input" id="projGithub" placeholder="https://github.com/...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Checklist / Tasks</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" class="form-input" id="taskInput" placeholder="Add a task..." onkeydown="if(event.key==='Enter') addTaskToForm()">
+          <button class="btn btn-primary btn-sm" onclick="addTaskToForm()">+ Add</button>
+        </div>
+        <div id="modalTasks"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProject()">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-panel" id="detailPanel">
+  <div class="dp-header">
+    <div class="dp-header-top">
+      <div class="dp-name" id="dpName">Project</div>
+      <button class="modal-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;" id="dpBadges"></div>
+  </div>
+  <div class="dp-body">
+    <div class="dp-tab-bar">
+      <div class="dp-tab active" onclick="switchTab('overview',this)">Overview</div>
+      <div class="dp-tab" onclick="switchTab('checklist',this)">Checklist</div>
+      <div class="dp-tab" onclick="switchTab('readme',this)">README</div>
+      <div class="dp-tab" onclick="switchTab('files',this)">Files</div>
+    </div>
+    
+    <!-- Overview tab -->
+    <div class="dp-tab-content active" id="tab-overview">
+      <div class="dp-section">
+        <div class="dp-section-title">Details</div>
+        <div class="dp-info-grid">
+          <div class="dp-info-item"><div class="key">Status</div><div class="val" id="dpStatus">—</div></div>
+          <div class="dp-info-item"><div class="key">Tech</div><div class="val" id="dpLang">—</div></div>
+          <div class="dp-info-item"><div class="key">Progress</div><div class="val" id="dpProgress">—</div></div>
+          <div class="dp-info-item"><div class="key">Created</div><div class="val" id="dpDate">—</div></div>
+        </div>
+      </div>
+      <div class="dp-section">
+        <div class="dp-section-title">Description</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;" id="dpDesc">—</div>
+      </div>
+      <div class="dp-section">
+        <div class="dp-section-title">Progress</div>
+        <div class="progress-bar" style="height:6px;margin-bottom:6px;">
+          <div class="progress-fill" id="dpProgressBar" style="width:0%"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);" id="dpProgressLabel"></div>
+      </div>
+      <div class="dp-section">
+        <div class="dp-section-title">GitHub</div>
+        <div id="dpGithubWrap"></div>
+      </div>
+      <div class="dp-section">
+        <div class="dp-section-title">Actions</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="editCurrentProject()">✎ Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadProject()" title="Download project data">⬇ Download</button>
+          <button class="btn btn-primary btn-sm" onclick="markFinished()">✅ Mark Finished</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCurrentProject()">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Checklist tab -->
+    <div class="dp-tab-content" id="tab-checklist">
+      <div class="dp-section">
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <input type="text" class="form-input" id="dpTaskInput" placeholder="Add checklist item..." onkeydown="if(event.key==='Enter') addDetailTask()">
+          <button class="btn btn-primary btn-sm" onclick="addDetailTask()">+</button>
+        </div>
+        <div id="dpTaskList"></div>
+      </div>
+    </div>
+    
+    <!-- README tab -->
+    <div class="dp-tab-content" id="tab-readme">
+      <div class="dp-section">
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="btn btn-outline btn-sm" onclick="generateReadme()">✦ AI Generate README</button>
+          <button class="btn btn-ghost btn-sm" onclick="saveReadme()">💾 Save</button>
+        </div>
+        <textarea id="dpReadme" class="form-textarea" style="min-height:300px;font-family:'JetBrains Mono',monospace;font-size:12px;" placeholder="# Project README&#10;&#10;Write your README here in Markdown..."></textarea>
+      </div>
+    </div>
+    
+    <!-- Files tab -->
+    <div class="dp-tab-content" id="tab-files">
+      <div class="dp-section">
+        <div class="dp-section-title">Upload Project Files</div>
+        <div class="upload-area" onclick="document.getElementById('fileUploadInput').click()">
+          📁 Click to upload folder/zip file
+          <div style="font-size:11px;margin-top:6px;color:var(--muted);">ZIP, folder archives supported</div>
+        </div>
+        <input type="file" id="fileUploadInput" style="display:none" accept=".zip,.tar,.gz,.rar" onchange="uploadFile(this)">
+        <div id="uploadStatus" style="margin-top:10px;font-size:12px;color:var(--muted);"></div>
+      </div>
+      <div class="dp-section">
+        <div class="dp-section-title">Download</div>
+        <button class="btn btn-ghost btn-sm" onclick="downloadProject()" style="width:100%;justify-content:center;">
+          ⬇ Download Project Data (.json)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__events = {{ events | tojson }};
+window.__tasks = {{ tasks | tojson }};
+
+let projects = {{ projects | tojson }};
+projects = projects.map(p => ({
+  id: p.id, name: p.name, desc: p.description || '', status: p.status,
+  lang: p.tech || 'Python', progress: p.progress || 0,
+  github_url: p.github_url || '', readme_text: p.readme_text || '',
+  startDate: p.created_at ? p.created_at.split(' ')[0] : ''
+}));
+
+let currentFilter = 'all', currentSearch = '', currentSort = 'newest';
+let selectedProjectId = null, modalTasks = [], editingId = null;
+let detailTasks = [];
+
+const langColors = {
+  'Python':{'bg':'rgba(55,118,171,0.2)','color':'#3776ab'},
+  'JavaScript':{'bg':'rgba(247,223,30,0.15)','color':'#f7df1e'},
+  'TypeScript':{'bg':'rgba(0,122,204,0.2)','color':'#007acc'},
+  'React':{'bg':'rgba(97,218,251,0.15)','color':'#61dafb'},
+  'FastAPI':{'bg':'rgba(0,149,132,0.2)','color':'#009588'},
+  'Node.js':{'bg':'rgba(104,160,99,0.2)','color':'#68a063'},
+  'Go':{'bg':'rgba(0,173,216,0.2)','color':'#00add8'},
+  'Rust':{'bg':'rgba(222,165,132,0.2)','color':'#dea584'},
+  'Flutter':{'bg':'rgba(84,171,226,0.2)','color':'#54abe2'},
+  'Swift':{'bg':'rgba(255,80,40,0.2)','color':'#fa7343'},
+  'Kotlin':{'bg':'rgba(127,82,255,0.2)','color':'#7f52ff'},
+  'C++':{'bg':'rgba(0,89,156,0.2)','color':'#00599c'},
+};
+const statusMap = {
+  'planning':{'label':'📋 Planning','cls':'status-planning','dot':'#818cf8'},
+  'in_progress':{'label':'⚡ In Progress','cls':'status-in_progress','dot':'#fbbf24'},
+  'finished':{'label':'✅ Finished','cls':'status-finished','dot':'#6ee7b7'},
+};
+
+function renderProjects() {
+  const grid = document.getElementById('projectsGrid');
+  let filtered = [...projects];
+  if (currentFilter !== 'all') filtered = filtered.filter(p => p.status === currentFilter);
+  if (currentSearch) filtered = filtered.filter(p => p.name.toLowerCase().includes(currentSearch) || p.desc.toLowerCase().includes(currentSearch));
+  if (currentSort === 'progress') filtered.sort((a,b) => b.progress - a.progress);
+  else if (currentSort === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
+  else if (currentSort === 'status') filtered.sort((a,b) => a.status.localeCompare(b.status));
+  document.getElementById('projectCount').textContent = `${filtered.length} project${filtered.length!==1?'s':''}`;
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state"><span class="empty-icon">◫</span><div class="empty-title">No projects found</div><div class="empty-sub">Click "+ New Project" to get started.</div></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map((p, i) => {
+    const lc = langColors[p.lang] || {bg:'rgba(90,112,128,0.2)',color:'#5a7080'};
+    const st = statusMap[p.status] || statusMap['planning'];
+    return `<div class="project-card" style="animation-delay:${i*.05}s" onclick="openDetail(${p.id})">
+      <div class="project-card-header">
+        <span class="badge" style="background:${lc.bg};color:${lc.color};border-radius:6px;">${p.lang}</span>
+        <span class="badge ${st.cls}">${st.label}</span>
+      </div>
+      <div class="project-card-body">
+        <div class="project-name">${p.name}</div>
+        <div class="project-desc">${p.desc || 'No description.'}</div>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;">
+            <span>Progress</span><span style="color:var(--accent);font-weight:600;">${p.progress}%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${p.progress}%"></div></div>
+        </div>
+      </div>
+      <div class="project-card-footer">
+        <div class="meta-chips">
+          <span class="meta-chip">📅 ${p.startDate}</span>
+          ${p.github_url ? `<span class="meta-chip">🐙 GitHub</span>` : ''}
+        </div>
+        <div class="card-actions">
+          <div class="icon-btn" onclick="event.stopPropagation();openModal(${p.id})" title="Edit">✎</div>
+          <div class="icon-btn" onclick="event.stopPropagation();downloadProject(${p.id})" title="Download">⬇</div>
+          <div class="icon-btn" onclick="event.stopPropagation();deleteProject(${p.id})" title="Delete">🗑</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterByStatus(s, btn) {
+  currentFilter = s;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderProjects();
+}
+function filterProjects() { currentSearch = document.getElementById('searchInput').value.toLowerCase(); renderProjects(); }
+function sortProjects(v) { currentSort = v; renderProjects(); }
+
+function openModal(id = null) {
+  editingId = id; modalTasks = [];
+  document.getElementById('modalTitle').textContent = id ? 'Edit Project' : 'New Project';
+  document.getElementById('projName').value = '';
+  document.getElementById('projStatus').value = 'planning';
+  document.getElementById('projDesc').value = '';
+  document.getElementById('projLang').value = 'Python';
+  document.getElementById('projProgress').value = 0;
+  document.getElementById('projGithub').value = '';
+  document.getElementById('modalTasks').innerHTML = '';
+  if (id) {
+    const p = projects.find(x => x.id === id);
+    if (p) {
+      document.getElementById('projName').value = p.name;
+      document.getElementById('projStatus').value = p.status;
+      document.getElementById('projDesc').value = p.desc;
+      document.getElementById('projLang').value = p.lang;
+      document.getElementById('projProgress').value = p.progress;
+      document.getElementById('projGithub').value = p.github_url || '';
+    }
+  }
+  document.getElementById('projectModal').classList.add('open');
+}
+function closeModal() { document.getElementById('projectModal').classList.remove('open'); }
+document.getElementById('projectModal').addEventListener('click', e => { if (e.target === document.getElementById('projectModal')) closeModal(); });
+
+function addTaskToForm() {
+  const input = document.getElementById('taskInput');
+  if (!input.value.trim()) return;
+  modalTasks.push({ text: input.value.trim(), done: false });
+  input.value = '';
+  renderModalTasks();
+}
+function renderModalTasks() {
+  document.getElementById('modalTasks').innerHTML = modalTasks.map((t, i) => `
+    <div class="checklist-item ${t.done ? 'done-item' : ''}" onclick="toggleModalTask(${i})">
+      <div class="ci-box">✓</div>
+      <span class="ci-text">${t.text}</span>
+      <span onclick="event.stopPropagation();modalTasks.splice(${i},1);renderModalTasks()" style="cursor:pointer;color:var(--muted);font-size:14px;padding:2px 6px;">×</span>
+    </div>`).join('');
+}
+function toggleModalTask(i) { modalTasks[i].done = !modalTasks[i].done; renderModalTasks(); }
+
+async function saveProject() {
+  const name = document.getElementById('projName').value.trim();
+  if (!name) { showToast('Please enter a project name', true); return; }
+  const data = {
+    name, status: document.getElementById('projStatus').value,
+    description: document.getElementById('projDesc').value,
+    tech: document.getElementById('projLang').value,
+    progress: parseInt(document.getElementById('projProgress').value) || 0,
+    github_url: document.getElementById('projGithub').value,
+    tasks: modalTasks
+  };
+  if (editingId) {
+    const res = await fetch(`/api/projects/${editingId}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    const r = await res.json();
+    if (r.success) {
+      const p = projects.find(x => x.id === editingId);
+      Object.assign(p, {name:data.name, status:data.status, desc:data.description, lang:data.tech, progress:data.progress, github_url:data.github_url});
+      showToast('Project updated! ✓');
+    }
+  } else {
+    const res = await fetch('/api/projects', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    const r = await res.json();
+    if (r.success) {
+      projects.unshift({id:r.id, name:data.name, desc:data.description, status:data.status, lang:data.tech, progress:data.progress, github_url:data.github_url, readme_text:'', startDate:new Date().toISOString().split('T')[0]});
+      showToast('Project created! 🎉');
+    }
+  }
+  closeModal(); renderProjects();
+}
+
+async function openDetail(id) {
+  const p = projects.find(x => x.id === id);
+  if (!p) return;
+  selectedProjectId = id;
+  const lc = langColors[p.lang] || {bg:'rgba(90,112,128,0.2)',color:'#5a7080'};
+  const st = statusMap[p.status] || statusMap['planning'];
+  document.getElementById('dpName').textContent = p.name;
+  document.getElementById('dpBadges').innerHTML = `<span class="badge" style="background:${lc.bg};color:${lc.color}">${p.lang}</span> <span class="badge ${st.cls}">${st.label}</span>`;
+  document.getElementById('dpStatus').textContent = st.label;
+  document.getElementById('dpLang').textContent = p.lang;
+  document.getElementById('dpDate').textContent = p.startDate || '—';
+  document.getElementById('dpProgress').textContent = p.progress + '%';
+  document.getElementById('dpDesc').textContent = p.desc || 'No description.';
+  document.getElementById('dpProgressBar').style.width = p.progress + '%';
+  document.getElementById('dpProgressLabel').textContent = `${p.progress}% complete`;
+  document.getElementById('dpReadme').value = p.readme_text || '';
+  
+  // GitHub link
+  const ghWrap = document.getElementById('dpGithubWrap');
+  if (p.github_url) {
+    ghWrap.innerHTML = `<a href="${p.github_url}" target="_blank" class="github-link">🐙 ${p.github_url}</a>`;
+  } else {
+    ghWrap.innerHTML = `<div style="font-size:12px;color:var(--muted);">No GitHub URL set. Edit project to add one.</div>`;
+  }
+  
+  // Load tasks
+  await loadDetailTasks(id);
+  document.getElementById('detailPanel').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailPanel').classList.remove('open'); selectedProjectId = null; }
+
+async function loadDetailTasks(pid) {
+  try {
+    const res = await fetch(`/api/projects/${pid}/tasks`);
+    detailTasks = await res.json();
+    renderDetailTasks();
+  } catch (e) { detailTasks = []; renderDetailTasks(); }
+}
+
+function renderDetailTasks() {
+  const list = document.getElementById('dpTaskList');
+  if (!detailTasks.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:16px;">No tasks yet. Add one above!</div>';
+    return;
+  }
+  list.innerHTML = detailTasks.map(t => `
+    <div class="checklist-item ${t.done ? 'done-item' : ''}" onclick="toggleDetailTask(${t.id})">
+      <div class="ci-box">✓</div>
+      <span class="ci-text">${t.title}</span>
+      <span onclick="event.stopPropagation();deleteDetailTask(${t.id})" style="cursor:pointer;color:var(--muted);font-size:14px;padding:2px 6px;">×</span>
+    </div>`).join('');
+}
+
+async function toggleDetailTask(tid) {
+  await fetch(`/api/project-tasks/${tid}`, {method:'PUT'});
+  const t = detailTasks.find(x => x.id === tid);
+  if (t) t.done = !t.done;
+  renderDetailTasks();
+}
+
+async function deleteDetailTask(tid) {
+  await fetch(`/api/project-tasks/${tid}`, {method:'DELETE'});
+  detailTasks = detailTasks.filter(x => x.id !== tid);
+  renderDetailTasks();
+}
+
+async function addDetailTask() {
+  const input = document.getElementById('dpTaskInput');
+  const title = input.value.trim();
+  if (!title || !selectedProjectId) return;
+  const res = await fetch(`/api/projects/${selectedProjectId}/tasks`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title})});
+  const r = await res.json();
+  if (r.success) {
+    detailTasks.push({id: r.id, title, done: false});
+    input.value = '';
+    renderDetailTasks();
+    showToast('Task added ✓');
+  }
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.dp-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.dp-tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+async function generateReadme() {
+  const p = projects.find(x => x.id === selectedProjectId);
+  if (!p) return;
+  document.getElementById('dpReadme').value = 'Generating README...';
+  const res = await fetch('/api/ai/readme', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:p.name, description:p.desc, tech:p.lang})});
+  const r = await res.json();
+  if (r.result) document.getElementById('dpReadme').value = r.result;
+}
+
+async function saveReadme() {
+  const p = projects.find(x => x.id === selectedProjectId);
+  if (!p) return;
+  const readme = document.getElementById('dpReadme').value;
+  await fetch(`/api/projects/${selectedProjectId}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...p, description:p.desc, tech:p.lang, readme_text:readme})});
+  p.readme_text = readme;
+  showToast('README saved ✓');
+}
+
+async function uploadFile(input) {
+  if (!input.files[0] || !selectedProjectId) return;
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  document.getElementById('uploadStatus').textContent = 'Uploading...';
+  try {
+    const res = await fetch(`/api/projects/${selectedProjectId}/upload`, {method:'POST', body:formData});
+    const r = await res.json();
+    document.getElementById('uploadStatus').textContent = r.success ? `✅ Uploaded: ${r.filename}` : `❌ ${r.message}`;
+    showToast(r.success ? 'File uploaded!' : 'Upload failed', !r.success);
+  } catch (e) { document.getElementById('uploadStatus').textContent = '❌ Upload failed'; }
+}
+
+function downloadProject(id) {
+  const pid = id || selectedProjectId;
+  if (!pid) return;
+  window.open(`/api/projects/${pid}/download`, '_blank');
+  showToast('Download started ⬇');
+}
+
+function editCurrentProject() { if (selectedProjectId) openModal(selectedProjectId); }
+
+async function deleteProject(id) {
+  if (!confirm('Delete this project and all its tasks?')) return;
+  const res = await fetch(`/api/projects/${id}`, {method:'DELETE'});
+  const r = await res.json();
+  if (r.success) {
+    projects = projects.filter(p => p.id !== id);
+    if (selectedProjectId === id) closeDetail();
+    renderProjects(); showToast('Project deleted');
+  }
+}
+function deleteCurrentProject() { if (selectedProjectId) deleteProject(selectedProjectId); }
+
+async function markFinished() {
+  const p = projects.find(x => x.id === selectedProjectId);
+  if (!p) return;
+  await fetch(`/api/projects/${p.id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:p.name, status:'finished', description:p.desc, tech:p.lang, progress:100, github_url:p.github_url, readme_text:p.readme_text})});
+  p.status = 'finished'; p.progress = 100;
+  openDetail(selectedProjectId); renderProjects();
+  showToast('Project marked as finished! 🎉');
+}
+
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = 'toast' + (isErr ? ' toast-error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+renderProjects();
+</script>
+{% endblock %}

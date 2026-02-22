@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Page Not Found{% endblock %}
+{% block content %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:40px;position:relative;z-index:1;">
+  <div style="font-size:96px;font-weight:900;color:var(--accent);opacity:.15;line-height:1;">404</div>
+  <div style="font-size:22px;font-weight:700;color:var(--text);margin-top:-30px;">Page not found</div>
+  <div style="font-size:14px;color:var(--muted);max-width:360px;line-height:1.7;">The page you're looking for doesn't exist or has been moved.</div>
+  <a href="/" class="btn btn-primary" style="margin-top:8px;">← Back to Dashboard</a>
+</div>
+{% endblock %}

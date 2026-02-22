@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Settings{% endblock %}
+{% from "sidebar.html" import render_sidebar %}
+
+{% block extra_css %}
+<style>
+body { display:flex; }
+.resume-output { background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:20px;font-size:13px;line-height:1.8;color:var(--text2);white-space:pre-wrap;max-height:500px;overflow-y:auto;font-family:'JetBrains Mono',monospace; }
+.color-swatches { display:flex;gap:8px;flex-wrap:wrap; }
+.av-color { width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.2s; }
+.av-color:hover, .av-color.active { border-color:var(--text);transform:scale(1.15); }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ render_sidebar(user, 'settings') }}
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-btn mobile-menu-btn" id="mobileMenuBtn">☰</button>
+      <div class="page-title">Settings</div>
+    </div>
+    <div class="topbar-right">
+      <div class="clock-display" id="clockDisplay">—</div>
+      <div class="topbar-btn" id="notifBtn">🔔<span class="badge">0</span></div>
+    </div>
+  </div>
+
+  <div class="content" style="overflow-y:auto;height:calc(100vh - 60px);">
+    <div class="settings-layout">
+      <!-- Settings Nav -->
+      <div>
+        <div class="settings-nav">
+          <div class="settings-nav-item active" onclick="switchSection('profile',this)">👤 Profile & Biodata</div>
+          <div class="settings-nav-item" onclick="switchSection('resume',this)">📄 Resume Generator</div>
+          <div class="settings-nav-item" onclick="switchSection('appearance',this)">🎨 Appearance</div>
+          <div class="settings-nav-item" onclick="switchSection('account',this)">🔐 Account</div>
+        </div>
+      </div>
+
+      <div>
+        <!-- Profile Section -->
+        <div class="settings-section active" id="section-profile">
+          <div class="settings-card">
+            <div class="settings-card-title">👤 Profile & Biodata</div>
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border);">
+              <div id="avatarPreview" style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent3));display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--bg);">
+                {{ user.username[:2].upper() }}
+              </div>
+              <div>
+                <div style="font-size:16px;font-weight:700;">{{ user.username }}</div>
+                <div style="font-size:12px;color:var(--muted);">{{ user.email }}</div>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <div class="color-swatches" id="avatarColors">
+                    <div class="av-color active" data-color="#6ee7b7" style="background:#6ee7b7;" title="Mint" onclick="setAvatarColor(this)"></div>
+                    <div class="av-color" data-color="#818cf8" style="background:#818cf8;" title="Violet" onclick="setAvatarColor(this)"></div>
+                    <div class="av-color" data-color="#f472b6" style="background:#f472b6;" title="Pink" onclick="setAvatarColor(this)"></div>
+                    <div class="av-color" data-color="#fbbf24" style="background:#fbbf24;" title="Gold" onclick="setAvatarColor(this)"></div>
+                    <div class="av-color" data-color="#fb923c" style="background:#fb923c;" title="Orange" onclick="setAvatarColor(this)"></div>
+                    <div class="av-color" data-color="#38bdf8" style="background:#38bdf8;" title="Sky" onclick="setAvatarColor(this)"></div>
+                    <div class="av-color" data-color="#4ade80" style="background:#4ade80;" title="Green" onclick="setAvatarColor(this)"></div>
+                    <div class="av-color" data-color="#f87171" style="background:#f87171;" title="Red" onclick="setAvatarColor(this)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-input" id="fullName" value="{{ profile.full_name or '' }}" placeholder="Your full name">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Job Title</label>
+                <input type="text" class="form-input" id="jobTitle" value="{{ profile.title or '' }}" placeholder="e.g. Full Stack Developer">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="text" class="form-input" id="phone" value="{{ profile.phone or '' }}" placeholder="+1 234 567 8900">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Location</label>
+                <input type="text" class="form-input" id="location" value="{{ profile.location or '' }}" placeholder="City, Country">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bio / Summary</label>
+              <textarea class="form-textarea" id="bio" placeholder="Write a short professional bio..." style="min-height:90px;">{{ profile.bio or '' }}</textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">GitHub Profile URL</label>
+                <input type="text" class="form-input" id="githubProfile" value="{{ profile.github_profile or '' }}" placeholder="https://github.com/username">
+              </div>
+              <div class="form-group">
+                <label class="form-label">LinkedIn Profile URL</label>
+                <input type="text" class="form-input" id="linkedinProfile" value="{{ profile.linkedin_profile or '' }}" placeholder="https://linkedin.com/in/...">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Website / Portfolio</label>
+              <input type="text" class="form-input" id="website" value="{{ profile.website or '' }}" placeholder="https://yourwebsite.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Skills</label>
+              <textarea class="form-textarea" id="skills" placeholder="Python, JavaScript, React, PostgreSQL, Docker..." style="min-height:80px;">{{ profile.skills or '' }}</textarea>
+              <div class="form-hint">Separate with commas or describe in detail</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Work Experience</label>
+              <textarea class="form-textarea" id="experience" placeholder="Company — Role (Year–Year)&#10;• Key achievement or responsibility" style="min-height:120px;">{{ profile.experience or '' }}</textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Education</label>
+              <textarea class="form-textarea" id="education" placeholder="University Name — Degree (Year)&#10;GPA, Honors, etc." style="min-height:90px;">{{ profile.education or '' }}</textarea>
+            </div>
+            <button class="btn btn-primary" onclick="saveProfile()">💾 Save Profile</button>
+          </div>
+        </div>
+
+        <!-- Resume Section -->
+        <div class="settings-section" id="section-resume">
+          <div class="settings-card">
+            <div class="settings-card-title">📄 Resume Generator</div>
+            <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.7;">
+              Generate a professional resume from your profile biodata and finished projects. Make sure you've filled in your profile details first.
+            </p>
+            <button class="btn btn-primary" onclick="generateResume()">✦ Generate Resume</button>
+            <div id="resumeOutput" style="margin-top:20px;display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="font-size:13px;font-weight:700;">Generated Resume</div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-ghost btn-sm" onclick="copyResume()">📋 Copy</button>
+                  <button class="btn btn-outline btn-sm" onclick="downloadResume()">⬇ Download .txt</button>
+                </div>
+              </div>
+              <div class="resume-output" id="resumeContent"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Appearance Section -->
+        <div class="settings-section" id="section-appearance">
+          <div class="settings-card">
+            <div class="settings-card-title">🎨 Appearance</div>
+            <div class="form-group">
+              <label class="form-label">Color Theme</label>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;">
+                <div class="theme-option" data-theme="dark" onclick="applyTheme('dark',this)" style="background:#0a0d14;border:2px solid var(--accent);border-radius:10px;padding:14px;cursor:pointer;text-align:center;font-size:12px;color:#6ee7b7;font-weight:600;">🌙 Dark</div>
+                <div class="theme-option" data-theme="light" onclick="applyTheme('light',this)" style="background:#f0f2f8;border:2px solid transparent;border-radius:10px;padding:14px;cursor:pointer;text-align:center;font-size:12px;color:#059669;font-weight:600;">☀️ Light</div>
+                <div class="theme-option" data-theme="ocean" onclick="applyTheme('ocean',this)" style="background:#040d1a;border:2px solid transparent;border-radius:10px;padding:14px;cursor:pointer;text-align:center;font-size:12px;color:#38bdf8;font-weight:600;">🌊 Ocean</div>
+                <div class="theme-option" data-theme="violet" onclick="applyTheme('violet',this)" style="background:#0d0a1a;border:2px solid transparent;border-radius:10px;padding:14px;cursor:pointer;text-align:center;font-size:12px;color:#a78bfa;font-weight:600;">💜 Violet</div>
+                <div class="theme-option" data-theme="sunset" onclick="applyTheme('sunset',this)" style="background:#160a08;border:2px solid transparent;border-radius:10px;padding:14px;cursor:pointer;text-align:center;font-size:12px;color:#fb923c;font-weight:600;">🌅 Sunset</div>
+                <div class="theme-option" data-theme="forest" onclick="applyTheme('forest',this)" style="background:#060e08;border:2px solid transparent;border-radius:10px;padding:14px;cursor:pointer;text-align:center;font-size:12px;color:#4ade80;font-weight:600;">🌲 Forest</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Section -->
+        <div class="settings-section" id="section-account">
+          <div class="settings-card">
+            <div class="settings-card-title">🔐 Account</div>
+            <div class="dp-info-grid" style="margin-bottom:20px;">
+              <div class="dp-info-item"><div class="key">Username</div><div class="val">{{ user.username }}</div></div>
+              <div class="dp-info-item"><div class="key">Email</div><div class="val">{{ user.email }}</div></div>
+            </div>
+            <div class="divider"></div>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger" style="margin-top:12px;">⎋ Sign Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__events = [];
+window.__tasks = [];
+
+let selectedColor = '{{ profile.avatar_color or "#6ee7b7" }}';
+
+function switchSection(name, btn) {
+  document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.settings-nav-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setAvatarColor(el) {
+  document.querySelectorAll('.av-color').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedColor = el.dataset.color;
+  const prev = document.getElementById('avatarPreview');
+  prev.style.background = `linear-gradient(135deg, ${selectedColor}, var(--accent3))`;
+}
+
+// Init avatar color
+(function() {
+  const c = selectedColor;
+  document.querySelectorAll('.av-color').forEach(el => {
+    if (el.dataset.color === c) el.classList.add('active');
+  });
+})();
+
+async function saveProfile() {
+  const data = {
+    full_name: document.getElementById('fullName').value,
+    title: document.getElementById('jobTitle').value,
+    phone: document.getElementById('phone').value,
+    location: document.getElementById('location').value,
+    bio: document.getElementById('bio').value,
+    skills: document.getElementById('skills').value,
+    experience: document.getElementById('experience').value,
+    education: document.getElementById('education').value,
+    github_profile: document.getElementById('githubProfile').value,
+    linkedin_profile: document.getElementById('linkedinProfile').value,
+    website: document.getElementById('website').value,
+    avatar_color: selectedColor
+  };
+  const res = await fetch('/api/profile', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  const r = await res.json();
+  showToast(r.success ? 'Profile saved! ✓' : 'Error saving: ' + r.message, !r.success);
+}
+
+async function generateResume() {
+  const btn = event.target;
+  btn.textContent = '✦ Generating...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/ai/generate-resume', {method:'POST', headers:{'Content-Type':'application/json'}});
+    const r = await res.json();
+    if (r.success) {
+      document.getElementById('resumeContent').textContent = r.result;
+      document.getElementById('resumeOutput').style.display = 'block';
+      showToast('Resume generated! ✓');
+    } else {
+      showToast('Error: ' + r.result, true);
+    }
+  } catch(e) { showToast('Generation failed', true); }
+  btn.textContent = '✦ Generate Resume';
+  btn.disabled = false;
+}
+
+function copyResume() {
+  const text = document.getElementById('resumeContent').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard! ✓'));
+}
+
+function downloadResume() {
+  const text = document.getElementById('resumeContent').textContent;
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+  a.download = 'resume.md';
+  a.click();
+  showToast('Download started ⬇');
+}
+
+function applyTheme(theme, el) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('df-theme', theme);
+  document.querySelectorAll('.theme-option').forEach(o => o.style.borderColor = 'transparent');
+  el.style.borderColor = 'var(--accent)';
+  document.querySelectorAll('.theme-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.theme === theme);
+  });
+  showToast('Theme changed to ' + theme + '! ✓');
+}
+
+// Init theme highlight
+(function() {
+  const curr = document.documentElement.getAttribute('data-theme') || 'dark';
+  document.querySelectorAll('.theme-option').forEach(o => {
+    if (o.dataset.theme === curr) o.style.borderColor = 'var(--accent)';
+  });
+})();
+
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = 'toast' + (isErr ? ' toast-error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+{% endblock %}

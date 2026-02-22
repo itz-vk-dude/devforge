@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Notepad{% endblock %}
+{% from "sidebar.html" import render_sidebar %}
+{% block extra_css %}
+<style>
+body{display:flex;}
+.notes-outer{display:flex;flex:1;height:100vh;overflow:hidden;}
+.notes-list-panel{width:270px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);flex-shrink:0;height:100%;}
+.nlp-header{padding:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.nlp-search{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);font-family:'JetBrains Mono',monospace;outline:none;transition:.2s;}
+.nlp-search:focus{border-color:var(--accent);}
+.notes-scroll{flex:1;overflow-y:auto;padding:8px;}
+.note-item{padding:11px 12px;border-radius:10px;cursor:pointer;margin-bottom:4px;border:1px solid transparent;transition:.15s;}
+.note-item:hover{background:var(--card);border-color:var(--border);}
+.note-item.active{background:rgba(110,231,183,0.07);border-color:rgba(110,231,183,0.25);}
+.ni-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.ni-preview{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ni-date{font-size:10px;color:var(--muted);margin-top:3px;}
+.c-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.editor-wrap{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);}
+.editor-topbar{height:60px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:var(--surface);flex-shrink:0;gap:10px;}
+.note-main-title{background:transparent;border:none;outline:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:700;color:var(--text);width:100%;}
+.note-main-title::placeholder{color:var(--muted);}
+.nc-row{display:flex;gap:5px;align-items:center;}
+.nc{width:16px;height:16px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.15s;flex-shrink:0;}
+.nc:hover,.nc.sel{border-color:var(--text);transform:scale(1.2);}
+.toolbar{padding:8px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:3px;flex-wrap:wrap;background:var(--surface);flex-shrink:0;}
+.tb-btn{min-width:26px;height:26px;border-radius:6px;background:transparent;border:1px solid transparent;color:var(--muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:.15s;padding:0 4px;}
+.tb-btn:hover{background:var(--card);border-color:var(--border);color:var(--text);}
+.tb-sep{width:1px;height:16px;background:var(--border);margin:0 3px;}
+.wc{font-size:10px;color:var(--muted);margin-left:auto;font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+.ai-bar{padding:7px 18px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;background:var(--surface);align-items:center;flex-shrink:0;}
+.ai-bar-label{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.ai-tb{padding:4px 11px;border:1px solid var(--border2);border-radius:100px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text2);background:transparent;transition:.2s;}
+.ai-tb:hover{border-color:var(--accent);color:var(--accent);}
+.checklist-panel{margin:0 18px 10px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;display:none;flex-shrink:0;}
+.checklist-panel.show{display:block;}
+.cp-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.ci{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.ci:last-child{border-bottom:none;padding-bottom:0;}
+.ci-box{width:15px;height:15px;border-radius:4px;border:2px solid var(--border2);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;color:transparent;transition:.2s;}
+.ci-box.done{background:var(--accent);border-color:var(--accent);color:var(--bg);}
+.ci-label{flex:1;}
+.ci-label.done-text{text-decoration:line-through;color:var(--muted);}
+.editor-body{flex:1;overflow-y:auto;padding:22px 28px;}
+.note-editor{min-height:calc(100vh - 260px);outline:none;font-size:14px;line-height:1.9;color:var(--text);font-family:'JetBrains Mono',monospace;caret-color:var(--accent);}
+.note-editor:empty::before{content:'Start writing…';color:var(--muted);pointer-events:none;}
+.note-editor h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;margin:14px 0 7px;}
+.note-editor h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;margin:12px 0 5px;}
+.note-editor h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:600;margin:10px 0 4px;}
+.note-editor ul,.note-editor ol{padding-left:22px;margin:6px 0;}
+.note-editor li{margin-bottom:3px;}
+.note-editor blockquote{border-left:3px solid var(--accent);padding:8px 14px;color:var(--muted);margin:10px 0;background:rgba(110,231,183,0.04);border-radius:0 6px 6px 0;}
+.note-editor code{background:rgba(110,231,183,0.1);color:var(--accent);padding:2px 5px;border-radius:4px;font-size:12px;}
+.note-editor pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;overflow-x:auto;margin:10px 0;}
+.note-editor a{color:var(--accent);}
+.note-editor mark{background:rgba(251,191,36,0.2);color:#fbbf24;padding:1px 4px;border-radius:3px;}
+.empty-editor{display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 200px);color:var(--muted);text-align:center;gap:10px;}
+@media(max-width:800px){.notes-list-panel{position:fixed;transform:translateX(-100%);z-index:200;height:100vh;transition:.3s;}.notes-list-panel.mobile-open{transform:translateX(0);}}
+</style>
+{% endblock %}
+
+{% block content %}
+{{ render_sidebar(user, 'notepad') }}
+<div class="notes-outer">
+  <!-- Notes list -->
+  <div class="notes-list-panel" id="notesListPanel">
+    <div class="nlp-header">
+      <input type="text" class="nlp-search" placeholder="🔍 Search…" oninput="searchNotes(this.value)">
+      <button class="btn btn-primary btn-sm" onclick="newNote()">+</button>
+    </div>
+    <div class="notes-scroll" id="notesList"></div>
+  </div>
+
+  <!-- Editor -->
+  <div class="editor-wrap">
+    <div class="editor-topbar">
+      <button class="topbar-btn mobile-menu-btn" id="mobileMenuBtn">☰</button>
+      <input type="text" id="noteTitleInput" class="note-main-title" placeholder="Note title…" oninput="debounceSave()" style="flex:1;">
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <div class="nc-row" id="colorPicker">
+          <div class="nc sel" data-color="#141926" style="background:#141926;" onclick="setColor(this)"></div>
+          <div class="nc" data-color="#0d2020" style="background:#0d2020;" onclick="setColor(this)"></div>
+          <div class="nc" data-color="#1a0d2e" style="background:#1a0d2e;" onclick="setColor(this)"></div>
+          <div class="nc" data-color="#2e1a0d" style="background:#2e1a0d;" onclick="setColor(this)"></div>
+          <div class="nc" data-color="#1a0d0d" style="background:#1a0d0d;" onclick="setColor(this)"></div>
+          <div class="nc" data-color="#0d1a0d" style="background:#0d1a0d;" onclick="setColor(this)"></div>
+        </div>
+        <div class="clock-display" id="clockDisplay">—</div>
+        <button class="icon-btn" id="pinBtn" onclick="togglePin()" title="Pin">📍</button>
+        <div class="topbar-btn" id="notifBtn">🔔<span class="badge">0</span></div>
+        <button class="btn btn-danger btn-sm" onclick="deleteNote()">🗑</button>
+      </div>
+    </div>
+
+    <!-- Checklist -->
+    <div class="checklist-panel" id="checklistPanel">
+      <div class="cp-title">☑ Checklist</div>
+      <div id="checklistItems"></div>
+      <div style="display:flex;gap:7px;margin-top:8px;">
+        <input type="text" class="form-input" id="checkInput" placeholder="Add item…" style="font-size:12px;" onkeydown="if(event.key==='Enter')addCheckItem()">
+        <button class="btn btn-primary btn-xs" onclick="addCheckItem()">+</button>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="tb-btn" onclick="fmt('bold')" title="Bold"><b>B</b></button>
+      <button class="tb-btn" onclick="fmt('italic')" title="Italic"><i>I</i></button>
+      <button class="tb-btn" onclick="fmt('underline')" title="Underline"><u>U</u></button>
+      <button class="tb-btn" onclick="fmt('strikeThrough')" title="Strike"><s>S</s></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="fmtBlock('h1')"><b>H1</b></button>
+      <button class="tb-btn" onclick="fmtBlock('h2')"><b>H2</b></button>
+      <button class="tb-btn" onclick="fmtBlock('h3')"><b>H3</b></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="fmt('insertUnorderedList')">• List</button>
+      <button class="tb-btn" onclick="fmt('insertOrderedList')">1. List</button>
+      <button class="tb-btn" onclick="fmtBlock('blockquote')" title="Quote">❝</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="toggleChecklist()" title="Toggle Checklist">☑</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="fmt('removeFormat')" title="Clear format">✕ Clear</button>
+      <span class="wc" id="wordCount">0 words</span>
+    </div>
+
+    <!-- AI bar -->
+    <div class="ai-bar">
+      <span class="ai-bar-label">✦ AI</span>
+      <button class="ai-tb" onclick="aiDo('fix-grammar')">✓ Fix Grammar</button>
+      <button class="ai-tb" onclick="aiDo('rewrite')">↻ Rewrite</button>
+      <button class="ai-tb" onclick="aiDo('summarize')">⊟ Summarize</button>
+      <button class="ai-tb" onclick="aiDo('continue')">→ Continue</button>
+    </div>
+
+    <!-- Editor body -->
+    <div class="editor-body">
+      <div id="emptyState" class="empty-editor">
+        <div style="font-size:48px;opacity:.2;">✎</div>
+        <div style="font-size:17px;font-weight:700;color:var(--text2);">Select or create a note</div>
+        <div style="font-size:13px;">Click + to create your first note</div>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="newNote()">+ New Note</button>
+      </div>
+      <div id="editorArea" style="display:none;">
+        <div class="note-editor" id="noteEditor" contenteditable="true" oninput="onEdit()" spellcheck="true"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__events={{ (events|tojson) if events is defined else '[]' }};
+window.__tasks={{ (tasks|tojson) if tasks is defined else '[]' }};
+let notes={{ notes|tojson }};
+notes=notes.map(n=>({id:n.id,title:n.title||'Untitled',content:n.content||'',color:n.color||'#141926',pinned:!!n.pinned,updated:n.updated_at||'',checks:[]}));
+let curId=null,saveTimer=null,checks=[];
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function fmtDate(s){if(!s)return '';try{return new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch{return s;}}
+function renderList(f=''){
+  const el=document.getElementById('notesList');
+  const fl=f.toLowerCase();
+  const list=f?notes.filter(n=>n.title.toLowerCase().includes(fl)||n.content.toLowerCase().includes(fl)):notes;
+  if(!list.length){el.innerHTML=`<div style="text-align:center;padding:28px;color:var(--muted);font-size:12px;">${f?'No matches':'No notes yet'}</div>`;return;}
+  el.innerHTML=list.map(n=>`<div class="note-item ${n.id===curId?'active':''}" onclick="selectNote(${n.id})">
+    <div class="ni-title">${n.pinned?'📌 ':''}<span class="c-dot" style="background:${n.color==='#141926'?'var(--border2)':n.color}"></span>${esc(n.title)}</div>
+    <div class="ni-preview">${esc(n.content.replace(/<[^>]*>/g,'').substring(0,60))}</div>
+    <div class="ni-date">${fmtDate(n.updated)}</div>
+  </div>`).join('');
+}
+function searchNotes(v){renderList(v);}
+function selectNote(id){
+  const n=notes.find(x=>x.id===id);if(!n)return;
+  curId=id;
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('editorArea').style.display='block';
+  document.getElementById('noteTitleInput').value=n.title;
+  document.getElementById('noteEditor').innerHTML=n.content;
+  document.getElementById('pinBtn').textContent=n.pinned?'📌':'📍';
+  document.querySelectorAll('.nc').forEach(c=>c.classList.toggle('sel',c.dataset.color===n.color));
+  checks=n.checks||[];renderChecklist();
+  document.getElementById('checklistPanel').classList.toggle('show',checks.length>0);
+  updateWC();renderList();
+}
+async function newNote(){
+  const res=await fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'Untitled',content:'',color:'#141926',pinned:false})});
+  const r=await res.json();
+  if(r.success){const n={id:r.id,title:'Untitled',content:'',color:'#141926',pinned:false,updated:new Date().toISOString(),checks:[]};notes.unshift(n);renderList();selectNote(r.id);document.getElementById('noteTitleInput').focus();document.getElementById('noteTitleInput').select();}
+}
+function debounceSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveNote,700);}
+async function saveNote(){
+  if(!curId)return;
+  const n=notes.find(x=>x.id===curId);if(!n)return;
+  n.title=document.getElementById('noteTitleInput').value||'Untitled';
+  n.content=document.getElementById('noteEditor').innerHTML;
+  n.updated=new Date().toISOString();renderList();
+  await fetch(`/api/notes/${curId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:n.title,content:n.content,color:n.color,pinned:n.pinned})});
+}
+async function deleteNote(){
+  if(!curId)return;if(!confirm('Delete this note?'))return;
+  await fetch(`/api/notes/${curId}`,{method:'DELETE'});
+  notes=notes.filter(x=>x.id!==curId);curId=null;
+  document.getElementById('emptyState').style.display='flex';
+  document.getElementById('editorArea').style.display='none';
+  document.getElementById('noteTitleInput').value='';
+  renderList();showToast('Note deleted');
+}
+async function togglePin(){
+  if(!curId)return;const n=notes.find(x=>x.id===curId);if(!n)return;
+  n.pinned=!n.pinned;document.getElementById('pinBtn').textContent=n.pinned?'📌':'📍';
+  notes.sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0));renderList();
+  await fetch(`/api/notes/${curId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:n.title,content:n.content,color:n.color,pinned:n.pinned})});
+  showToast(n.pinned?'Note pinned 📌':'Note unpinned');
+}
+async function setColor(el){
+  if(!curId)return;const n=notes.find(x=>x.id===curId);if(!n)return;
+  n.color=el.dataset.color;document.querySelectorAll('.nc').forEach(c=>c.classList.toggle('sel',c===el));renderList();
+  await fetch(`/api/notes/${curId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:n.title,content:n.content,color:n.color,pinned:n.pinned})});
+}
+// Checklist
+function toggleChecklist(){
+  const p=document.getElementById('checklistPanel');p.classList.toggle('show');
+  if(p.classList.contains('show'))document.getElementById('checkInput').focus();
+}
+function addCheckItem(){
+  const inp=document.getElementById('checkInput');const t=inp.value.trim();if(!t)return;
+  checks.push({text:t,done:false});inp.value='';renderChecklist();const n=notes.find(x=>x.id===curId);if(n)n.checks=checks;debounceSave();
+}
+function renderChecklist(){
+  document.getElementById('checklistItems').innerHTML=checks.map((c,i)=>`
+    <div class="ci" onclick="toggleCI(${i})">
+      <div class="ci-box ${c.done?'done':''}">✓</div>
+      <span class="ci-label ${c.done?'done-text':''}">${esc(c.text)}</span>
+      <span onclick="event.stopPropagation();removeCI(${i})" style="color:var(--muted);cursor:pointer;padding:2px 6px;font-size:14px;">×</span>
+    </div>`).join('');
+}
+function toggleCI(i){checks[i].done=!checks[i].done;renderChecklist();const n=notes.find(x=>x.id===curId);if(n)n.checks=checks;debounceSave();}
+function removeCI(i){checks.splice(i,1);renderChecklist();if(checks.length===0)document.getElementById('checklistPanel').classList.remove('show');const n=notes.find(x=>x.id===curId);if(n)n.checks=checks;debounceSave();}
+// Formatting
+function fmt(cmd){document.getElementById('noteEditor').focus();document.execCommand(cmd,false,null);debounceSave();}
+function fmtBlock(tag){document.getElementById('noteEditor').focus();document.execCommand('formatBlock',false,`<${tag}>`);debounceSave();}
+function onEdit(){updateWC();debounceSave();}
+function updateWC(){const txt=document.getElementById('noteEditor').innerText||'';const w=txt.trim()?txt.trim().split(/\s+/).length:0;document.getElementById('wordCount').textContent=`${w} word${w!==1?'s':''}`;}
+// AI
+async function aiDo(type){
+  const ed=document.getElementById('noteEditor');
+  const sel=window.getSelection();const text=sel&&sel.toString().trim()?sel.toString().trim():ed.innerText;
+  if(!text){showToast('No text',true);return;}showToast('AI thinking…');
+  const ep={['fix-grammar']:'/api/ai/fix-grammar',rewrite:'/api/ai/rewrite',summarize:'/api/ai/summarize',continue:'/api/ai/continue'};
+  try{
+    const res=await fetch(ep[type],{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const r=await res.json();
+    if(r.result){
+      if(sel&&sel.toString().trim()){const range=sel.getRangeAt(0);range.deleteContents();range.insertNode(document.createTextNode(r.result));}
+      else{ed.innerHTML=r.result.split('\n').map(l=>`<p>${l||'&nbsp;'}</p>`).join('');}
+      debounceSave();showToast('AI done ✓');
+    }
+  }catch{showToast('AI failed',true);}
+}
+function showToast(msg,isErr){const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;t.className='toast'+(isErr?' toast-error':'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+renderList();if(notes.length>0)selectNote(notes[0].id);
+window.addEventListener('beforeunload',saveNote);
+</script>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Sign In{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-mark">⌬</div>
+      DevForge
+    </div>
+    <div class="auth-title">Welcome back</div>
+    <div class="auth-sub">Sign in to your workspace</div>
+    <div class="auth-form">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-input" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-input" placeholder="Your password" required>
+      </div>
+      <button type="button" class="btn btn-primary w-full" style="width:100%;justify-content:center;" onclick="doLogin(this)">Sign In →</button>
+    </div>
+    <div class="auth-footer">Don't have an account? <a href="{{ url_for('register') }}">Create one →</a></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function doLogin(btn) {
+  const form = btn.closest('.auth-card');
+  const email = form.querySelector('input[name="email"]').value.trim();
+  const password = form.querySelector('input[name="password"]').value;
+  if (!email || !password) return;
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+  const fd = new FormData();
+  fd.append('email', email); fd.append('password', password);
+  const res = await fetch('{{ url_for("login") }}', {method:'POST', body:fd});
+  if (res.redirected) { window.location.href = res.url; }
+  else { btn.textContent = 'Sign In →'; btn.disabled = false; }
+}
+document.querySelectorAll('input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(document.querySelector('.btn-primary')); }));
+</script>
+{% endblock %}

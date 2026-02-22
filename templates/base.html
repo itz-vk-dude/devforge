@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="DevForge — Modern developer workspace">
+<title>{% block title %}DevForge{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⌬</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+<!-- Background effects -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="noise-overlay"></div>
+<div class="grid-bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<div class="mobile-overlay" id="mobileOverlay"></div>
+
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-container" id="flashContainer">
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- Page content -->
+{% block content %}{% endblock %}
+
+<!-- Notification panel -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-header">
+    <div class="notif-title">🔔 Notifications</div>
+    <button class="icon-btn" id="notifClose" aria-label="Close">✕</button>
+  </div>
+  <div class="notif-list" id="notifList">
+    <div id="notifItemsContainer">
+      <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="alert" aria-live="polite"><span id="toastMsg"></span></div>
+
+<!-- Pass events & tasks data to JS -->
+<script>
+window.__events = {{ (events | tojson) if events is defined else '[]' }};
+window.__tasks = {{ (tasks | tojson) if tasks is defined else '[]' }};
+</script>
+
+<script src="{{ url_for('static', filename='js/cursor.js') }}"></script>
+
+{% block extra_js %}{% endblock %}
+
+<script>
+// ── Notification panel population ──────────────────────────
+(function() {
+  const events = window.__events || [];
+  const tasks  = window.__tasks  || [];
+  const container = document.getElementById('notifItemsContainer');
+  if (!container) return;
+  const now = new Date();
+  const items = [];
+
+  // Upcoming events in next 7 days
+  events.forEach(ev => {
+    const dateStr = ev.event_date || ev.date;
+    if (!dateStr) return;
+    const evDate = new Date(dateStr);
+    const diff = evDate - now;
+    if (diff > -86400000 && diff < 7 * 86400000) {
+      const days = Math.ceil(diff / 86400000);
+      const when = days < 0 ? 'Yesterday' : days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`;
+      const timeStr = (ev.event_time || ev.time) ? ' at ' + fmt12(ev.event_time || ev.time) : '';
+      items.push({
+        unread: days <= 1,
+        title: ev.title,
+        sub: `📅 ${when}${timeStr}`,
+        type: 'event'
+      });
+    }
+  });
+
+  // Overdue tasks
+  tasks.forEach(t => {
+    if (t.done || !t.due_date) return;
+    const due = new Date(t.due_date);
+    if (due < now) {
+      const daysAgo = Math.floor((now - due) / 86400000);
+      items.push({
+        unread: true,
+        title: t.title,
+        sub: `⚠️ Overdue — ${daysAgo === 0 ? 'due today' : `${daysAgo} day${daysAgo>1?'s':''} overdue`}`,
+        type: 'task'
+      });
+    }
+  });
+
+  if (!items.length) {
+    container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">🎉 All caught up!</div>';
+  } else {
+    container.innerHTML = items.map(i => `
+      <div class="notif-item ${i.unread ? 'unread' : ''}">
+        <div class="notif-item-title">${i.title}</div>
+        <div class="notif-item-sub">${i.sub}</div>
+      </div>`).join('');
+  }
+
+  const unread = items.filter(i => i.unread).length;
+  document.querySelectorAll('#notifBtn .badge').forEach(b => {
+    b.textContent = unread || '';
+    b.style.display = unread ? '' : 'none';
+  });
+})();
+
+function fmt12(t) {
+  if (!t) return '';
+  try {
+    const [h, m] = t.split(':').map(Number);
+    const ap = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ap}`;
+  } catch { return t; }
+}
+
+function showToast(msg, isError) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  toast.className = 'toast' + (isError ? ' toast-error' : '');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// Auto-dismiss flash messages after 5 seconds
+setTimeout(() => {
+  const fc = document.getElementById('flashContainer');
+  if (fc) fc.style.transition='opacity .5s', fc.style.opacity='0', setTimeout(()=>fc.remove(), 500);
+}, 5000);
+</script>
+</body>
+</html>

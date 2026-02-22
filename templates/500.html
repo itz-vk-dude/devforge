@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Server Error{% endblock %}
+{% block content %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:40px;position:relative;z-index:1;">
+  <div style="font-size:96px;font-weight:900;color:var(--danger);opacity:.15;line-height:1;">500</div>
+  <div style="font-size:22px;font-weight:700;color:var(--text);margin-top:-30px;">Something went wrong</div>
+  <div style="font-size:14px;color:var(--muted);max-width:360px;line-height:1.7;">An unexpected error occurred. We're working on it. Please try again in a moment.</div>
+  <a href="/" class="btn btn-primary" style="margin-top:8px;">← Back to Dashboard</a>
+</div>
+{% endblock %}

@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Schedule{% endblock %}
+{% from "sidebar.html" import render_sidebar %}
+
+{% block extra_css %}
+<style>
+body { display:flex; }
+.am-pm-row { display:grid;grid-template-columns:1fr 1fr 80px;gap:10px; }
+.ampm-select { background:var(--bg);border:1px solid var(--border2);border-radius:9px;padding:10px 14px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;width:100%; }
+.notif-checkbox { display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer; }
+.notif-checkbox input { accent-color:var(--accent);width:15px;height:15px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ render_sidebar(user, 'schedule') }}
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-btn mobile-menu-btn" id="mobileMenuBtn">☰</button>
+      <div class="page-title">Schedule & Tasks</div>
+    </div>
+    <div class="topbar-right">
+      <div class="clock-display" id="clockDisplay">—</div>
+      <div class="topbar-btn" id="notifBtn" title="Notifications">🔔<span class="badge">0</span></div>
+      <button class="btn btn-outline btn-sm" onclick="openModal('event')">+ Add Event</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('task')">+ Add Task</button>
+    </div>
+  </div>
+
+  <div class="sched-layout" style="height:calc(100vh - 60px);">
+    <!-- LEFT: Calendar -->
+    <div class="calendar-side">
+      <div class="calendar-header">
+        <div class="cal-nav">
+          <button class="nav-arrow" onclick="changeMonth(-1)">‹</button>
+          <div class="cal-title" id="calTitle"></div>
+          <button class="nav-arrow" onclick="changeMonth(1)">›</button>
+        </div>
+      </div>
+      <div class="day-labels">
+        <div class="day-label">Su</div><div class="day-label">Mo</div><div class="day-label">Tu</div>
+        <div class="day-label">We</div><div class="day-label">Th</div><div class="day-label">Fr</div><div class="day-label">Sa</div>
+      </div>
+      <div class="days-grid" id="daysGrid"></div>
+      <div class="selected-events" style="padding:0 20px 20px;">
+        <div class="sel-day-header">
+          <div class="sel-day-title" id="selectedDayTitle">Today</div>
+          <button class="btn btn-outline btn-xs" onclick="openModal('event')">+ Event</button>
+        </div>
+        <div id="dayEventsList"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Tasks -->
+    <div class="tasks-side">
+      <div class="ai-banner" style="margin:16px 20px 0;margin-bottom:0;">
+        <div class="ai-banner-header"><div class="ai-banner-icon">✦</div><div class="ai-banner-title">AI Productivity</div></div>
+        <div class="ai-banner-text" id="aiSummaryText">Loading...</div>
+      </div>
+      <div class="tasks-topbar">
+        <div style="font-size:14px;font-weight:700;">Issue Board</div>
+        <div class="filter-chips">
+          <button class="filter-chip active" onclick="filterTasks('all',this)">All</button>
+          <button class="filter-chip" onclick="filterTasks('high',this)">🔴 High</button>
+          <button class="filter-chip" onclick="filterTasks('medium',this)">🟡 Medium</button>
+          <button class="filter-chip" onclick="filterTasks('low',this)">🟢 Low</button>
+          <button class="filter-chip" onclick="filterTasks('overdue',this)">⚠ Overdue</button>
+        </div>
+      </div>
+      <div class="board-columns">
+        <div class="board-col">
+          <div class="col-header"><div class="col-title"><span style="width:7px;height:7px;border-radius:50%;background:#818cf8;display:inline-block"></span> To Do</div><span class="col-count" id="todoCount">0</span></div>
+          <div id="todoCol"></div>
+        </div>
+        <div class="board-col">
+          <div class="col-header"><div class="col-title"><span style="width:7px;height:7px;border-radius:50%;background:#fbbf24;display:inline-block"></span> In Progress</div><span class="col-count" id="inprogressCount">0</span></div>
+          <div id="inprogressCol"></div>
+        </div>
+        <div class="board-col">
+          <div class="col-header"><div class="col-title"><span style="width:7px;height:7px;border-radius:50%;background:#6ee7b7;display:inline-block"></span> Done</div><span class="col-count" id="doneCount">0</span></div>
+          <div id="doneCol"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="mainModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Add Event</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" id="typeGroup">
+        <label class="form-label">Type</label>
+        <div class="type-selector">
+          <button class="type-btn active" onclick="selectType('event',this)">📅 Event</button>
+          <button class="type-btn" onclick="selectType('meeting',this)">🤝 Meeting</button>
+          <button class="type-btn" onclick="selectType('birthday',this)">🎂 Birthday</button>
+          <button class="type-btn" onclick="selectType('reminder',this)">🔔 Reminder</button>
+          <button class="type-btn" onclick="selectType('task',this)">✅ Task</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input type="text" class="form-input" id="itemTitle" placeholder="What's happening?">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" id="itemDate">
+        </div>
+        <div class="form-group" id="timeFieldGroup">
+          <label class="form-label">Time</label>
+          <div class="am-pm-row" style="grid-template-columns:1fr 80px;">
+            <input type="time" class="form-input" id="itemTime" value="09:00">
+            <select class="ampm-select" id="itemAmPm">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="itemNotes" placeholder="Additional details..."></textarea>
+      </div>
+      <!-- Task-specific fields -->
+      <div id="taskFields" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" id="taskPriority">
+              <option value="high">🔴 High</option>
+              <option value="medium" selected>🟡 Medium</option>
+              <option value="low">🟢 Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-input" id="taskDeadline">
+          </div>
+        </div>
+      </div>
+      <!-- Event repeat -->
+      <div class="form-group" id="repeatGroup">
+        <label class="form-label">Repeat</label>
+        <select class="form-select" id="itemRepeat">
+          <option value="none">Never</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <!-- Notification -->
+      <div class="form-group">
+        <label class="notif-checkbox">
+          <input type="checkbox" id="enableNotif" checked>
+          Enable browser reminder for this event
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let events = {{ events | tojson }};
+events = events.map(e => ({
+  id: e.id, type: e.type || 'other', title: e.title,
+  date: e.event_date || '', time: e.event_time || '',
+  notes: e.description || '', repeat: e.repeat_rule || 'none'
+}));
+
+let tasks = {{ tasks | tojson }};
+tasks = tasks.map(t => ({
+  id: t.id, title: t.title, priority: t.priority || 'medium',
+  status: t.done ? 'done' : 'todo', deadline: t.due_date || '', tags: []
+}));
+
+window.__events = events;
+window.__tasks = tasks;
+
+const today = new Date();
+let currentYear = today.getFullYear(), currentMonth = today.getMonth();
+let selectedDate = new Date(today);
+let selectedType = 'event', currentTaskFilter = 'all', modalMode = 'event';
+
+const typeColors = { event:'#6ee7b7', meeting:'#60a5fa', birthday:'#f472b6', task:'#fbbf24', reminder:'#a78bfa', other:'#94a3b8', deadline:'#f87171' };
+const typeLabels = { event:'📅 Event', meeting:'🤝 Meeting', birthday:'🎂 Birthday', task:'✅ Task', reminder:'🔔 Reminder', other:'📌 Other' };
+const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function fmtDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+function fmt12(timeStr) {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
+  const daysInPrev = new Date(currentYear, currentMonth, 0).getDate();
+  const grid = document.getElementById('daysGrid');
+  grid.innerHTML = '';
+  const evMap = {};
+  events.forEach(e => { if (!evMap[e.date]) evMap[e.date]=[]; evMap[e.date].push(e.type); });
+  for (let i = firstDay-1; i >= 0; i--) { grid.innerHTML += `<div class="cal-day other-month"><span>${daysInPrev-i}</span><div class="day-dots"></div></div>`; }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = d===today.getDate()&&currentMonth===today.getMonth()&&currentYear===today.getFullYear();
+    const isSel = ds===fmtDate(selectedDate);
+    const evTypes = evMap[ds]||[];
+    const dots = evTypes.slice(0,3).map(t=>`<div class="day-dot" style="background:${typeColors[t]||'#94a3b8'}"></div>`).join('');
+    grid.innerHTML += `<div class="cal-day${isToday?' today':''}${isSel?' selected':''}" onclick="selectDay(new Date(${currentYear},${currentMonth},${d}))"><span>${d}</span><div class="day-dots">${dots}</div></div>`;
+  }
+  const total = Math.ceil((firstDay+daysInMonth)/7)*7;
+  for (let d=1; d<=total-firstDay-daysInMonth; d++) { grid.innerHTML += `<div class="cal-day other-month"><span>${d}</span><div class="day-dots"></div></div>`; }
+  renderDayEvents();
+}
+
+function selectDay(date) { selectedDate = date; renderCalendar(); }
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) { currentMonth=0; currentYear++; }
+  if (currentMonth < 0) { currentMonth=11; currentYear--; }
+  renderCalendar();
+}
+
+function renderDayEvents() {
+  const ds = fmtDate(selectedDate);
+  document.getElementById('selectedDayTitle').textContent = selectedDate.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const dayEvts = events.filter(e => e.date===ds);
+  const list = document.getElementById('dayEventsList');
+  if (!dayEvts.length) { list.innerHTML='<div class="no-events">📭 No events for this day</div>'; return; }
+  list.innerHTML = dayEvts.map(e => `
+    <div class="event-pill">
+      <div class="event-color-bar" style="background:${typeColors[e.type]||'#94a3b8'}"></div>
+      <div class="event-info">
+        <div class="event-name">${e.title}</div>
+        <div class="event-meta">
+          ${e.time ? `<span>🕐 ${fmt12(e.time)}</span>` : ''}
+          ${e.notes ? `<span>💬 ${e.notes.substring(0,40)}</span>` : ''}
+          ${e.repeat && e.repeat !== 'none' ? `<span>🔄 ${e.repeat}</span>` : ''}
+        </div>
+      </div>
+      <span class="badge" style="background:${typeColors[e.type]}20;color:${typeColors[e.type]};font-size:10px;">${typeLabels[e.type]||'📌'}</span>
+    </div>`).join('');
+}
+
+function isOverdue(task) { if (!task.deadline||task.status==='done') return false; return new Date(task.deadline)<today; }
+
+function renderTasks() {
+  let filtered = [...tasks];
+  if (currentTaskFilter==='high') filtered=filtered.filter(t=>t.priority==='high');
+  else if (currentTaskFilter==='medium') filtered=filtered.filter(t=>t.priority==='medium');
+  else if (currentTaskFilter==='low') filtered=filtered.filter(t=>t.priority==='low');
+  else if (currentTaskFilter==='overdue') filtered=filtered.filter(t=>isOverdue(t));
+  const todo=filtered.filter(t=>t.status==='todo');
+  const inp=filtered.filter(t=>t.status==='inprogress');
+  const done=filtered.filter(t=>t.status==='done');
+  document.getElementById('todoCount').textContent=todo.length;
+  document.getElementById('inprogressCount').textContent=inp.length;
+  document.getElementById('doneCount').textContent=done.length;
+  const prClasses = {'high':'badge-red','medium':'badge-orange','low':'badge-green'};
+  const renderCol=(ts,idx)=>ts.map((t,i)=>`
+    <div class="task-card" style="animation-delay:${i*.05+idx*.08}s" onclick="quickMoveTask(${t.id})">
+      <div class="task-card-name">${t.title}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+        <span class="badge ${prClasses[t.priority]||'badge-muted'}" style="font-size:10px;">${t.priority}</span>
+        ${t.deadline?`<span class="badge ${isOverdue(t)?'badge-red':'badge-muted'}" style="font-size:10px;">📅 ${t.deadline}${isOverdue(t)?' ⚠':''}</span>`:''}
+      </div>
+      <div class="task-card-footer">
+        <div class="task-avatar">{{ user.username[:2].upper() }}</div>
+        <div style="font-size:9px;color:var(--muted);">Click → advance</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('todoCol').innerHTML=renderCol(todo,0)||'<div style="font-size:11px;color:var(--muted);text-align:center;padding:14px;">Empty</div>';
+  document.getElementById('inprogressCol').innerHTML=renderCol(inp,1)||'<div style="font-size:11px;color:var(--muted);text-align:center;padding:14px;">Empty</div>';
+  document.getElementById('doneCol').innerHTML=renderCol(done,2)||'<div style="font-size:11px;color:var(--muted);text-align:center;padding:14px;">Empty</div>';
+  updateAISummary();
+}
+
+function quickMoveTask(id) {
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  const flow=['todo','inprogress','done'];
+  const idx=flow.indexOf(t.status);
+  if (idx<flow.length-1) {
+    t.status=flow[idx+1];
+    const done=t.status==='done';
+    fetch(`/api/tasks/${t.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:t.title,done:done?1:0,priority:t.priority,due_date:t.deadline})});
+    showToast(`Moved to ${t.status==='inprogress'?'In Progress':'Done'} ✓`);
+  } else showToast('Already done! 🎉');
+  renderTasks();
+}
+
+function filterTasks(f,btn) {
+  currentTaskFilter=f;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderTasks();
+}
+
+function updateAISummary() {
+  const total=tasks.length, done=tasks.filter(t=>t.status==='done').length;
+  const overdue=tasks.filter(t=>isOverdue(t)).length, high=tasks.filter(t=>t.priority==='high'&&t.status!=='done').length;
+  const rate=total?Math.round(done/total*100):0;
+  const todayEvts=events.filter(e=>e.date===fmtDate(today)).length;
+  document.getElementById('aiSummaryText').innerHTML=
+    `Rate: <strong style="color:var(--accent)">${rate}%</strong> (${done}/${total} tasks done).` +
+    (overdue?` <span style="color:var(--danger)">⚠ ${overdue} overdue.</span>`:'') +
+    (high?` ${high} high-priority open.`:'') +
+    ` Today's events: <strong>${todayEvts}</strong>. Keep it up! 🚀`;
+}
+
+function openModal(mode='event') {
+  modalMode=mode; selectedType=mode==='task'?'task':'event';
+  document.getElementById('modalTitle').textContent=mode==='task'?'New Task':'Add Event / Reminder';
+  document.getElementById('itemTitle').value='';
+  document.getElementById('itemDate').value=fmtDate(selectedDate);
+  document.getElementById('itemTime').value='09:00';
+  document.getElementById('itemAmPm').value='AM';
+  document.getElementById('itemNotes').value='';
+  document.getElementById('itemRepeat').value='none';
+  document.getElementById('taskPriority').value='medium';
+  document.getElementById('taskDeadline').value=fmtDate(selectedDate);
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  const targetBtn=mode==='task'?4:0;
+  document.querySelectorAll('.type-btn')[targetBtn]?.classList.add('active');
+  document.getElementById('taskFields').style.display=mode==='task'?'block':'none';
+  document.getElementById('repeatGroup').style.display=mode==='task'?'none':'block';
+  document.getElementById('timeFieldGroup').style.display=mode==='task'?'none':'block';
+  document.getElementById('mainModal').classList.add('open');
+  // Request notification permission
+  if (Notification.permission === 'default') Notification.requestPermission();
+}
+function closeModal() { document.getElementById('mainModal').classList.remove('open'); }
+document.getElementById('mainModal').addEventListener('click',e=>{if(e.target===document.getElementById('mainModal'))closeModal();});
+
+function selectType(type,btn) {
+  selectedType=type;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('taskFields').style.display=type==='task'?'block':'none';
+  document.getElementById('repeatGroup').style.display=type==='task'?'none':'block';
+  document.getElementById('timeFieldGroup').style.display=type==='task'?'none':'block';
+}
+
+// Convert 12h input to 24h for storage
+function get24hTime() {
+  const timeVal = document.getElementById('itemTime').value;
+  const ampm = document.getElementById('itemAmPm').value;
+  if (!timeVal) return null;
+  let [h, m] = timeVal.split(':').map(Number);
+  if (ampm === 'PM' && h < 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+async function saveItem() {
+  const title=document.getElementById('itemTitle').value.trim();
+  if (!title) { showToast('Please enter a title', true); return; }
+  if (selectedType==='task') {
+    const data={title,priority:document.getElementById('taskPriority').value,due_date:document.getElementById('taskDeadline').value,done:0};
+    const res=await fetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const r=await res.json();
+    if (r.success) { tasks.unshift({id:r.id,title,priority:data.priority,status:'todo',deadline:data.due_date,tags:[]}); renderTasks(); showToast('Task created! ✓'); }
+  } else {
+    const eventTime = get24hTime();
+    const data={title,type:selectedType,event_date:document.getElementById('itemDate').value,event_time:eventTime,description:document.getElementById('itemNotes').value,repeat_rule:document.getElementById('itemRepeat').value};
+    const res=await fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const r=await res.json();
+    if (r.success) {
+      events.push({id:r.id,type:selectedType,title,date:data.event_date,time:eventTime||'',notes:data.description,repeat:data.repeat_rule});
+      window.__events = events;
+      renderCalendar();
+      showToast('Event added! ✓');
+      // Schedule browser notification if enabled
+      if (document.getElementById('enableNotif').checked && eventTime && Notification.permission === 'granted') {
+        const evDt = new Date(`${data.event_date}T${eventTime}`);
+        const now = new Date();
+        const diff = evDt - now - 15*60*1000; // 15 min before
+        if (diff > 0) setTimeout(() => new Notification(`⏰ ${title}`, {body:`Event starts in 15 minutes!`}), diff);
+      }
+    }
+  }
+  closeModal();
+}
+
+function showToast(msg, isErr) {
+  const t=document.getElementById('toast');
+  document.getElementById('toastMsg').textContent=msg;
+  t.className='toast'+(isErr?' toast-error':'');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+renderCalendar();
+renderTasks();
+</script>
+{% endblock %}

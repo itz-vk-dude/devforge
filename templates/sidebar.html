@@ -1,0 +1,51 @@
+{% macro render_sidebar(user, active_page) %}
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">⌬</div>
+    <span>DevForge</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Navigation</div>
+    <a href="{{ url_for('dashboard') }}" class="nav-item {{ 'active' if active_page == 'dashboard' }}">
+      <span class="nav-icon">⊞</span> Dashboard
+    </a>
+    <a href="{{ url_for('projects') }}" class="nav-item {{ 'active' if active_page == 'projects' }}">
+      <span class="nav-icon">◫</span> Projects
+    </a>
+    <a href="{{ url_for('schedule') }}" class="nav-item {{ 'active' if active_page == 'schedule' }}">
+      <span class="nav-icon">◷</span> Schedule
+    </a>
+    <a href="{{ url_for('notepad') }}" class="nav-item {{ 'active' if active_page == 'notepad' }}">
+      <span class="nav-icon">✎</span> Notepad
+    </a>
+    <a href="{{ url_for('ai_page') }}" class="nav-item {{ 'active' if active_page == 'ai' }}">
+      <span class="nav-icon">✦</span> AI Assistant
+    </a>
+    <div class="nav-section" style="margin-top:8px;">System</div>
+    <a href="{{ url_for('settings') }}" class="nav-item {{ 'active' if active_page == 'settings' }}">
+      <span class="nav-icon">⚙</span> Settings
+    </a>
+  </nav>
+  <div class="theme-picker">
+    <div class="theme-label">Themes</div>
+    <div class="theme-swatches">
+      <div class="theme-swatch" data-theme="dark" title="Dark" style="background:#0a0d14;border-color:#6ee7b7"></div>
+      <div class="theme-swatch" data-theme="light" title="Light" style="background:#f0f2f8;border-color:#059669"></div>
+      <div class="theme-swatch" data-theme="ocean" title="Ocean" style="background:#040d1a;border-color:#38bdf8"></div>
+      <div class="theme-swatch" data-theme="violet" title="Violet" style="background:#0d0a1a;border-color:#a78bfa"></div>
+      <div class="theme-swatch" data-theme="sunset" title="Sunset" style="background:#160a08;border-color:#fb923c"></div>
+      <div class="theme-swatch" data-theme="forest" title="Forest" style="background:#060e08;border-color:#4ade80"></div>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <a href="{{ url_for('settings') }}" class="user-card" style="text-decoration:none;color:inherit;">
+      <div class="avatar">{{ user.username[:2].upper() }}</div>
+      <div class="user-info">
+        <div class="user-name">{{ user.username }}</div>
+        <div class="user-role">Developer</div>
+      </div>
+    </a>
+    <a href="{{ url_for('logout') }}" class="logout-link">⎋ Sign Out</a>
+  </div>
+</aside>
+{% endmacro %}

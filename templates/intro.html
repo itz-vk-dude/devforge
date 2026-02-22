@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}DevForge — Developer Workspace{% endblock %}
+{% block extra_css %}
+<style>
+.intro-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;position:relative;z-index:1;}
+.intro-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;border:1px solid rgba(110,231,183,0.3);border-radius:100px;font-size:12px;font-weight:600;color:var(--accent);background:rgba(110,231,183,0.08);margin-bottom:28px;}
+.intro-title{font-size:clamp(36px,7vw,78px);font-weight:800;letter-spacing:-2px;line-height:1.1;text-align:center;margin-bottom:18px;}
+.intro-title span{background:linear-gradient(135deg,var(--accent),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.intro-sub{font-size:clamp(14px,2vw,18px);color:var(--text2);max-width:540px;text-align:center;line-height:1.7;margin-bottom:36px;}
+.intro-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.intro-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:56px;max-width:860px;width:100%;}
+.feat-card{background:rgba(20,25,38,0.7);border:1px solid var(--border);border-radius:14px;padding:18px;backdrop-filter:blur(10px);transition:.3s;}
+.feat-card:hover{border-color:var(--border2);transform:translateY(-4px);}
+.feat-icon{font-size:24px;margin-bottom:10px;}
+.feat-title{font-size:13px;font-weight:700;margin-bottom:5px;}
+.feat-sub{font-size:12px;color:var(--muted);line-height:1.6;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="intro-page">
+  <div class="intro-badge">✦ Developer Workspace • PostgreSQL • 6 Themes</div>
+  <h1 class="intro-title">Build, track, ship.<br><span>DevForge.</span></h1>
+  <p class="intro-sub">Your all-in-one developer workspace. Projects, schedules, notes, AI assistant — beautifully designed.</p>
+  <div class="intro-btns">
+    <a href="{{ url_for('register') }}" class="btn btn-primary" style="font-size:15px;padding:12px 28px;">Get Started →</a>
+    <a href="{{ url_for('login') }}" class="btn btn-outline" style="font-size:15px;padding:12px 28px;">Sign In</a>
+  </div>
+  <div class="intro-features">
+    <div class="feat-card"><div class="feat-icon">◫</div><div class="feat-title">Project Manager</div><div class="feat-sub">Checklists, GitHub links, README, file uploads &amp; downloads</div></div>
+    <div class="feat-card"><div class="feat-icon">◷</div><div class="feat-title">Smart Schedule</div><div class="feat-sub">Calendar, Kanban, AM/PM events, notifications &amp; yearly repeat</div></div>
+    <div class="feat-card"><div class="feat-icon">✎</div><div class="feat-title">Notepad</div><div class="feat-sub">Rich notes with AI-powered writing, grammar fix &amp; rewrite</div></div>
+    <div class="feat-card"><div class="feat-icon">⏰</div><div class="feat-title">Real-Time Clock</div><div class="feat-sub">Live clock with AM/PM display throughout the application</div></div>
+    <div class="feat-card"><div class="feat-icon">✦</div><div class="feat-title">AI Assistant</div><div class="feat-sub">Chat, summarize, generate README &amp; task suggestions</div></div>
+    <div class="feat-card"><div class="feat-icon">📄</div><div class="feat-title">Resume Builder</div><div class="feat-sub">Generate a professional resume from your profile &amp; projects</div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: devforge
+      POSTGRES_PASSWORD: devforge_secret
+      POSTGRES_DB: devforge
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      PASSWORD_SALT: ${PASSWORD_SALT:-change-me-in-production}
+      DB_HOST: db
+      DB_USER: devforge
+      DB_PASSWORD: devforge_secret
+      DB_NAME: devforge
+      DB_PORT: 5432
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      FLASK_ENV: production
+      APP_URL: ${APP_URL:-http://localhost:8000}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  pgdata:
+  uploads:
