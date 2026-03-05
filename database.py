@@ -4,7 +4,7 @@ import psycopg2.pool
 import hashlib
 import hmac
 import os
-from datetime import datetime, date
+from datetime import datetime, date, time
 
 DB_CONFIG = {
     'host':     os.environ.get('DB_HOST', 'localhost'),
@@ -45,7 +45,7 @@ def _s(row):
     if not row:
         return row
     if isinstance(row, dict):
-        return {k: str(v) if isinstance(v, (date, datetime)) else v for k, v in row.items()}
+        return {k: str(v) if isinstance(v, (date, datetime, time)) else v for k, v in row.items()}
     return row
 
 # ── Database Init ──────────────────────────────────────────
